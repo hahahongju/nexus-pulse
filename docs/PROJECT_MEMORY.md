@@ -122,3 +122,26 @@ sudo cp /home/hongju/workspace/nexus-pulse/nexuspulse.service /etc/systemd/syste
 sudo systemctl daemon-reload
 sudo systemctl enable --now nexuspulse
 ```
+
+---
+
+## 6. 💾 서버 스토리지 및 LVM 디스크 파티션 구조
+
+### 물리 디스크 구성
+- **NVMe SSD (시스템 OS)**: `nvme0n1` (WDC PC SN530 256GB, 실제 인식 `238.5G`)
+  - `nvme0n1p1`: 1.0 GB (`/boot/efi`)
+  - `nvme0n1p2`: 2.0 GB (`/boot`)
+  - `nvme0n1p3`: 235.4 GB (LVM 볼륨 그룹: `ubuntu-vg`)
+    - `ubuntu--vg-ubuntu--lv`: 기본 100 GB (마운트 경로: `/`)
+    - **LVM 미할당 여유 공간**: 약 135.4 GB
+- **HDD 1 (대용량 스토리지)**: `sda` 2.7 TB (`/dev/sda1` -> `/srv/storage`, 2.0 TB)
+- **HDD 2 (작업용 스토리지)**: `sdb` 149.1 GB (`/dev/sdb2` -> `/srv/work`, 146 GB)
+
+### LVM 루트 파티션(`/`) 100% 전체 확장 명령어
+우분투 기본 설치 시 100GB만 잡혀있는 루트 파티션을 SSD 전체 용량(약 235GB)으로 온라인 실시간 확장할 때 사용하는 명령어:
+
+```bash
+sudo lvextend -l +100%FREE /dev/mapper/ubuntu--vg-ubuntu--lv -r
+```
+- `lvextend -l +100%FREE`: 남은 미할당 LVM 볼륨 그룹 여유 공간 100% 할당
+- `-r` (resize): ext4 파일시스템 실시간 무중단 확장 (재부팅 불필요)
