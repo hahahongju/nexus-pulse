@@ -183,15 +183,17 @@ export interface DockerEngineInfo {
 export interface VirtualMachine {
   id: string | number;
   name: string;
-  status: 'running' | 'paused' | 'shut off' | 'crashed' | 'idle';
+  status: 'running' | 'paused' | 'shut off' | 'crashed' | 'idle' | 'in shutdown';
   vcpus: number;
   memoryMb: number;
   diskImage?: string;
+  displayPort?: string;
   vncPort?: number | string;
-  pid?: number;
+  pid?: number | null;
   cpuPercent?: number;
   memPercent?: number;
   hypervisor: string;
+  autostart?: boolean;
   created?: string;
 }
 

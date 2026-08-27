@@ -329,6 +329,20 @@ apiRouter.get('/virtualization', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/vms/:name/:action
+ * Control Virtual Machine domain (start, shutdown, destroy, reboot, pause, resume, reset)
+ */
+apiRouter.post('/vms/:name/:action', async (req, res) => {
+  try {
+    const { name, action } = req.params;
+    const result = await telemetry.vmAction(name, action);
+    res.json({ status: 'ok', data: result });
+  } catch (err) {
+    res.status(400).json({ status: 'error', message: err.message });
+  }
+});
+
 // Mount API router
 app.use('/api', apiRouter);
 
@@ -510,6 +524,25 @@ wss.on('connection', (ws, request) => {
           } catch (err) {
             ws.send(JSON.stringify({
               type: 'deploy_demo_result',
+              success: false,
+              error: err.message
+            }));
+          }
+          break;
+        }
+
+        case 'vm_action': {
+          try {
+            const { name, action } = msg.payload || msg;
+            const res = await telemetry.vmAction(name, action);
+            ws.send(JSON.stringify({
+              type: 'vm_action_result',
+              success: true,
+              data: res
+            }));
+          } catch (err) {
+            ws.send(JSON.stringify({
+              type: 'vm_action_result',
               success: false,
               error: err.message
             }));

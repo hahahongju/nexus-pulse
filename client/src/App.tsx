@@ -192,8 +192,9 @@ export const App: React.FC = () => {
     const interval = setInterval(() => {
       if (activeTab === 'containers') {
         fetchContainers();
+        fetchVirtualization();
       }
-    }, 4000);
+    }, 2500);
     return () => clearInterval(interval);
   }, [activeTab]);
 
@@ -205,11 +206,13 @@ export const App: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
+  const totalInstancesCount = (containers?.length || 0) + (virtualization?.vms?.length || 0);
+
   const tabs: { key: TabKey; label: string; icon: React.ReactNode; badge?: number }[] = [
     { key: 'overview', label: 'Overview HUD', icon: <Layers className="w-4 h-4" /> },
     { key: 'charts', label: 'Oscilloscope', icon: <LineChart className="w-4 h-4" /> },
     { key: 'processes', label: 'Processes', icon: <Terminal className="w-4 h-4" /> },
-    { key: 'containers', label: 'Containers & VMs', icon: <Box className="w-4 h-4" />, badge: containers.length > 0 ? containers.length : undefined },
+    { key: 'containers', label: 'Containers & VMs', icon: <Box className="w-4 h-4" />, badge: totalInstancesCount > 0 ? totalInstancesCount : undefined },
     { key: 'logs', label: 'System Logs', icon: <Activity className="w-4 h-4" />, badge: logs.length },
     { key: 'benchmark', label: 'Stress Benchmark', icon: <Flame className="w-4 h-4" /> },
     { key: 'ports', label: 'Ports & Sockets', icon: <Radio className="w-4 h-4" /> },
@@ -324,7 +327,10 @@ export const App: React.FC = () => {
                 containers={containers}
                 onRefresh={fetchContainers}
               />
-              <VirtualizationView virt={virtualization} />
+              <VirtualizationView
+                virt={virtualization}
+                onRefresh={fetchVirtualization}
+              />
             </div>
           )}
 

@@ -15,6 +15,7 @@ import {
   CheckCircle2, 
   AlertCircle, 
   PauseCircle, 
+  PlayCircle,
   X,
   FileText
 } from 'lucide-react';
@@ -428,6 +429,27 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ docker, containers
                               <Play className="w-3.5 h-3.5" />
                             </button>
                           )}
+
+                          {/* Pause / Unpause */}
+                          {isRunning ? (
+                            <button
+                              onClick={() => handleAction(c.id, 'pause')}
+                              disabled={actionLoadingId === `${c.id}-pause`}
+                              className="p-1 rounded bg-amber-950/60 hover:bg-amber-900 border border-amber-800 text-amber-300 transition-colors"
+                              title="Pause Container"
+                            >
+                              <PauseCircle className="w-3.5 h-3.5" />
+                            </button>
+                          ) : isPaused ? (
+                            <button
+                              onClick={() => handleAction(c.id, 'unpause')}
+                              disabled={actionLoadingId === `${c.id}-unpause`}
+                              className="p-1 rounded bg-cyan-950/60 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 transition-colors"
+                              title="Unpause Container"
+                            >
+                              <PlayCircle className="w-3.5 h-3.5" />
+                            </button>
+                          ) : null}
 
                           {/* Restart */}
                           <button
