@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Terminal, Download, Trash2, Pause, Play, Search, Filter } from 'lucide-react';
 import { LogEntry } from '../types/telemetry';
 import { sound } from '../services/sound';
+import { Tooltip } from './Tooltip';
 
 interface SystemLogsTerminalProps {
   logs: LogEntry[];
@@ -71,20 +72,22 @@ export const SystemLogsTerminal: React.FC<SystemLogsTerminalProps> = ({ logs }) 
         {/* Filters & Actions */}
         <div className="flex items-center flex-wrap gap-2 text-xs font-mono">
           {/* Level Filter */}
-          <select
-            value={filterLevel}
-            onChange={(e) => {
-              setFilterLevel(e.target.value);
-              sound.playClick();
-            }}
-            className="bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-slate-200 outline-none cursor-pointer"
-          >
-            <option value="ALL">ALL LEVELS</option>
-            <option value="INFO">INFO</option>
-            <option value="WARN">WARN</option>
-            <option value="ERROR">ERROR</option>
-            <option value="BENCHMARK">BENCHMARK</option>
-          </select>
+          <Tooltip content="로그 심각도 레벨 필터링">
+            <select
+              value={filterLevel}
+              onChange={(e) => {
+                setFilterLevel(e.target.value);
+                sound.playClick();
+              }}
+              className="bg-slate-900 border border-slate-700 rounded px-2.5 py-1 text-slate-200 outline-none cursor-pointer"
+            >
+              <option value="ALL">ALL LEVELS</option>
+              <option value="INFO">INFO</option>
+              <option value="WARN">WARN</option>
+              <option value="ERROR">ERROR</option>
+              <option value="BENCHMARK">BENCHMARK</option>
+            </select>
+          </Tooltip>
 
           {/* Search Box */}
           <div className="relative">
@@ -99,29 +102,31 @@ export const SystemLogsTerminal: React.FC<SystemLogsTerminalProps> = ({ logs }) 
           </div>
 
           {/* Auto Scroll Toggle */}
-          <button
-            onClick={() => {
-              setAutoScroll(!autoScroll);
-              sound.playClick();
-            }}
-            className={`flex items-center space-x-1 px-2.5 py-1 rounded border transition-colors ${
-              autoScroll ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' : 'bg-slate-900 text-slate-400 border-slate-700'
-            }`}
-            title="Toggle Auto-Scroll"
-          >
-            {autoScroll ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-            <span>Scroll</span>
-          </button>
+          <Tooltip content="실시간 자동 스크롤 켜기/끄기">
+            <button
+              onClick={() => {
+                setAutoScroll(!autoScroll);
+                sound.playClick();
+              }}
+              className={`flex items-center space-x-1 px-2.5 py-1 rounded border transition-colors ${
+                autoScroll ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' : 'bg-slate-900 text-slate-400 border-slate-700'
+              }`}
+            >
+              {autoScroll ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+              <span>Scroll</span>
+            </button>
+          </Tooltip>
 
           {/* Export */}
-          <button
-            onClick={downloadLogs}
-            className="flex items-center space-x-1 px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition-colors"
-            title="Download Logs"
-          >
-            <Download className="w-3 h-3" />
-            <span>Export</span>
-          </button>
+          <Tooltip content="로그 파일 텍스트(.txt) 다운로드">
+            <button
+              onClick={downloadLogs}
+              className="flex items-center space-x-1 px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition-colors"
+            >
+              <Download className="w-3 h-3" />
+              <span>Export</span>
+            </button>
+          </Tooltip>
         </div>
       </div>
 

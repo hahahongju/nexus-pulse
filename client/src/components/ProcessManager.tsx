@@ -3,6 +3,7 @@ import { Terminal, Search, Trash2, AlertTriangle, RefreshCw, X, ShieldAlert } fr
 import { ProcessItem, ProcessResponse } from '../types/telemetry';
 import { wsClient } from '../services/websocket';
 import { sound } from '../services/sound';
+import { Tooltip } from './Tooltip';
 
 export const ProcessManager: React.FC = () => {
   const [processes, setProcesses] = useState<ProcessResponse>({ all: 0, running: 0, list: [] });
@@ -102,41 +103,46 @@ export const ProcessManager: React.FC = () => {
 
           {/* Sort Buttons */}
           <div className="flex items-center rounded-md bg-slate-900 border border-slate-700 p-0.5">
-            <button
-              onClick={() => {
-                setSort('cpu');
-                sound.playClick();
-              }}
-              className={`px-2.5 py-1 rounded text-xs ${
-                sort === 'cpu' ? 'bg-cyan-500/20 text-cyan-300 font-bold' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Top CPU
-            </button>
-            <button
-              onClick={() => {
-                setSort('mem');
-                sound.playClick();
-              }}
-              className={`px-2.5 py-1 rounded text-xs ${
-                sort === 'mem' ? 'bg-purple-500/20 text-purple-300 font-bold' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Top RAM
-            </button>
+            <Tooltip content="CPU 사용량 상위 정렬">
+              <button
+                onClick={() => {
+                  setSort('cpu');
+                  sound.playClick();
+                }}
+                className={`px-2.5 py-1 rounded text-xs ${
+                  sort === 'cpu' ? 'bg-cyan-500/20 text-cyan-300 font-bold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Top CPU
+              </button>
+            </Tooltip>
+            <Tooltip content="메모리 점유율 상위 정렬">
+              <button
+                onClick={() => {
+                  setSort('mem');
+                  sound.playClick();
+                }}
+                className={`px-2.5 py-1 rounded text-xs ${
+                  sort === 'mem' ? 'bg-purple-500/20 text-purple-300 font-bold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Top RAM
+              </button>
+            </Tooltip>
           </div>
 
           {/* Refresh Button */}
-          <button
-            onClick={() => {
-              fetchProcesses();
-              sound.playClick();
-            }}
-            className="p-1.5 rounded bg-slate-900 border border-slate-700 text-slate-300 hover:border-cyan-500 hover:text-cyan-400 transition-colors"
-            title="Refresh Process List"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-cyan-400' : ''}`} />
-          </button>
+          <Tooltip content="프로세스 목록 즉시 새로고침">
+            <button
+              onClick={() => {
+                fetchProcesses();
+                sound.playClick();
+              }}
+              className="p-1.5 rounded bg-slate-900 border border-slate-700 text-slate-300 hover:border-cyan-500 hover:text-cyan-400 transition-colors"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-cyan-400' : ''}`} />
+            </button>
+          </Tooltip>
         </div>
       </div>
 
@@ -189,16 +195,17 @@ export const ProcessManager: React.FC = () => {
                     </span>
                   </td>
                   <td className="py-2 px-3 text-center">
-                    <button
-                      onClick={() => {
-                        setSelectedProc(p);
-                        sound.playClick();
-                      }}
-                      className="p-1 rounded bg-rose-500/10 hover:bg-rose-500/30 text-rose-400 border border-rose-500/30 transition-colors opacity-70 group-hover:opacity-100"
-                      title="Kill Process"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <Tooltip content={`프로세스 종료 (PID: ${p.pid})`}>
+                      <button
+                        onClick={() => {
+                          setSelectedProc(p);
+                          sound.playClick();
+                        }}
+                        className="p-1 rounded bg-rose-500/10 hover:bg-rose-500/30 text-rose-400 border border-rose-500/30 transition-colors opacity-70 group-hover:opacity-100"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </Tooltip>
                   </td>
                 </tr>
               ))

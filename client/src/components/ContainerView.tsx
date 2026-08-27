@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { DockerContainer, DockerEngineInfo } from '../types/telemetry';
 import { sound } from '../services/sound';
+import { Tooltip } from './Tooltip';
 
 interface ContainerViewProps {
   docker: DockerEngineInfo | null;
@@ -206,26 +207,29 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ docker, containers
         <div className="cyber-card p-4 flex flex-col justify-between">
           <div className="flex justify-between items-center">
             <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">CONTAINER ACTIONS</div>
-            <button
-              onClick={() => {
-                if (onRefresh) onRefresh();
-                sound.playClick();
-              }}
-              className="p-1 rounded bg-slate-900 border border-slate-700 hover:border-cyan-500 text-slate-300 hover:text-cyan-400 transition-colors"
-              title="Refresh Container States"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-            </button>
+            <Tooltip content="컨테이너 상태 즉시 새로고침">
+              <button
+                onClick={() => {
+                  if (onRefresh) onRefresh();
+                  sound.playClick();
+                }}
+                className="p-1 rounded bg-slate-900 border border-slate-700 hover:border-cyan-500 text-slate-300 hover:text-cyan-400 transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+              </button>
+            </Tooltip>
           </div>
           
-          <button
-            onClick={handleDeployDemo}
-            disabled={actionLoadingId === 'deploy-demo'}
-            className="w-full mt-2 py-2 px-3 rounded-md bg-gradient-to-r from-cyan-600 to-teal-500 hover:from-cyan-500 hover:to-teal-400 text-white font-mono text-xs font-bold transition-all shadow-[0_0_12px_rgba(0,240,255,0.25)] flex items-center justify-center space-x-1.5"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{actionLoadingId === 'deploy-demo' ? 'DEPLOYING...' : 'DEPLOY DEMO CONTAINER'}</span>
-          </button>
+          <Tooltip content="테스트용 Nginx 웹서버 컨테이너 원클릭 실행">
+            <button
+              onClick={handleDeployDemo}
+              disabled={actionLoadingId === 'deploy-demo'}
+              className="w-full mt-2 py-2 px-3 rounded-md bg-gradient-to-r from-cyan-600 to-teal-500 hover:from-cyan-500 hover:to-teal-400 text-white font-mono text-xs font-bold transition-all shadow-[0_0_12px_rgba(0,240,255,0.25)] flex items-center justify-center space-x-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{actionLoadingId === 'deploy-demo' ? 'DEPLOYING...' : 'DEPLOY DEMO CONTAINER'}</span>
+            </button>
+          </Tooltip>
         </div>
 
       </div>
@@ -404,77 +408,84 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ docker, containers
                       <td className="py-3 px-3 text-center">
                         <div className="flex items-center justify-center space-x-1.5">
                           {/* Logs Button */}
-                          <button
-                            onClick={() => handleFetchLogs(c)}
-                            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors"
-                            title="View Container Logs"
-                          >
-                            <Terminal className="w-3.5 h-3.5 text-cyan-400" />
-                          </button>
+                          <Tooltip content="실시간 표준 출력 로그 보기">
+                            <button
+                              onClick={() => handleFetchLogs(c)}
+                              className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors"
+                            >
+                              <Terminal className="w-3.5 h-3.5 text-cyan-400" />
+                            </button>
+                          </Tooltip>
 
                           {/* Start / Stop */}
                           {isRunning ? (
-                            <button
-                              onClick={() => handleAction(c.id, 'stop')}
-                              disabled={actionLoadingId === `${c.id}-stop`}
-                              className="p-1 rounded bg-rose-950/60 hover:bg-rose-900 border border-rose-800 text-rose-400 transition-colors"
-                              title="Stop Container"
-                            >
-                              <Square className="w-3.5 h-3.5" />
-                            </button>
+                            <Tooltip content="컨테이너 정지 (docker stop)">
+                              <button
+                                onClick={() => handleAction(c.id, 'stop')}
+                                disabled={actionLoadingId === `${c.id}-stop`}
+                                className="p-1 rounded bg-rose-950/60 hover:bg-rose-900 border border-rose-800 text-rose-400 transition-colors"
+                              >
+                                <Square className="w-3.5 h-3.5" />
+                              </button>
+                            </Tooltip>
                           ) : (
-                            <button
-                              onClick={() => handleAction(c.id, 'start')}
-                              disabled={actionLoadingId === `${c.id}-start`}
-                              className="p-1 rounded bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-800 text-emerald-400 transition-colors"
-                              title="Start Container"
-                            >
-                              <Play className="w-3.5 h-3.5" />
-                            </button>
+                            <Tooltip content="컨테이너 시작 (docker start)">
+                              <button
+                                onClick={() => handleAction(c.id, 'start')}
+                                disabled={actionLoadingId === `${c.id}-start`}
+                                className="p-1 rounded bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-800 text-emerald-400 transition-colors"
+                              >
+                                <Play className="w-3.5 h-3.5" />
+                              </button>
+                            </Tooltip>
                           )}
 
                           {/* Pause / Unpause */}
                           {isRunning ? (
-                            <button
-                              onClick={() => handleAction(c.id, 'pause')}
-                              disabled={actionLoadingId === `${c.id}-pause`}
-                              className="p-1 rounded bg-amber-950/60 hover:bg-amber-900 border border-amber-800 text-amber-300 transition-colors"
-                              title="Pause Container"
-                            >
-                              <PauseCircle className="w-3.5 h-3.5" />
-                            </button>
+                            <Tooltip content="컨테이너 일시정지 (docker pause)">
+                              <button
+                                onClick={() => handleAction(c.id, 'pause')}
+                                disabled={actionLoadingId === `${c.id}-pause`}
+                                className="p-1 rounded bg-amber-950/60 hover:bg-amber-900 border border-amber-800 text-amber-300 transition-colors"
+                              >
+                                <PauseCircle className="w-3.5 h-3.5" />
+                              </button>
+                            </Tooltip>
                           ) : isPaused ? (
-                            <button
-                              onClick={() => handleAction(c.id, 'unpause')}
-                              disabled={actionLoadingId === `${c.id}-unpause`}
-                              className="p-1 rounded bg-cyan-950/60 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 transition-colors"
-                              title="Unpause Container"
-                            >
-                              <PlayCircle className="w-3.5 h-3.5" />
-                            </button>
+                            <Tooltip content="컨테이너 실행 재개 (docker unpause)">
+                              <button
+                                onClick={() => handleAction(c.id, 'unpause')}
+                                disabled={actionLoadingId === `${c.id}-unpause`}
+                                className="p-1 rounded bg-cyan-950/60 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 transition-colors"
+                              >
+                                <PlayCircle className="w-3.5 h-3.5" />
+                              </button>
+                            </Tooltip>
                           ) : null}
 
                           {/* Restart */}
-                          <button
-                            onClick={() => handleAction(c.id, 'restart')}
-                            disabled={actionLoadingId === `${c.id}-restart`}
-                            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors"
-                            title="Restart Container"
-                          >
-                            <RotateCw className="w-3.5 h-3.5 text-amber-400" />
-                          </button>
+                          <Tooltip content="컨테이너 재시작 (docker restart)">
+                            <button
+                              onClick={() => handleAction(c.id, 'restart')}
+                              disabled={actionLoadingId === `${c.id}-restart`}
+                              className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors"
+                            >
+                              <RotateCw className="w-3.5 h-3.5 text-amber-400" />
+                            </button>
+                          </Tooltip>
 
                           {/* Delete Container */}
-                          <button
-                            onClick={() => {
-                              setDeleteModalContainer(c);
-                              sound.playClick();
-                            }}
-                            className="p-1 rounded bg-rose-950/40 hover:bg-rose-900 border border-rose-800/80 text-rose-400 transition-colors"
-                            title="Delete Container (docker rm -f)"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <Tooltip content="컨테이너 영구 삭제 (docker rm -f)">
+                            <button
+                              onClick={() => {
+                                setDeleteModalContainer(c);
+                                sound.playClick();
+                              }}
+                              className="p-1 rounded bg-rose-950/40 hover:bg-rose-900 border border-rose-800/80 text-rose-400 transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </Tooltip>
                         </div>
                       </td>
                     </tr>

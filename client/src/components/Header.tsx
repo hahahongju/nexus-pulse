@@ -14,6 +14,7 @@ import {
 import { SystemOverview, ThemeMode } from '../types/telemetry';
 import { sound } from '../services/sound';
 import { wsClient } from '../services/websocket';
+import { Tooltip } from './Tooltip';
 
 interface HeaderProps {
   overview: SystemOverview | null;
@@ -114,52 +115,57 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           {/* Polling Interval Selector */}
-          <div className="flex items-center space-x-1 px-2 py-1 rounded-md bg-slate-900/80 border border-slate-700/60 text-slate-300">
-            <RefreshCw className="w-3 h-3 text-cyan-400" />
-            <select
-              value={pollInterval}
-              onChange={(e) => {
-                const val = Number(e.target.value);
-                onPollIntervalChange(val);
-                sound.playClick();
-              }}
-              className="bg-transparent text-xs text-cyan-300 outline-none cursor-pointer"
-            >
-              <option value={500} className="bg-slate-900 text-slate-200">500ms (Hyper)</option>
-              <option value={1000} className="bg-slate-900 text-slate-200">1.0s (Normal)</option>
-              <option value={2000} className="bg-slate-900 text-slate-200">2.0s (Smooth)</option>
-              <option value={5000} className="bg-slate-900 text-slate-200">5.0s (Eco)</option>
-            </select>
-          </div>
+          <Tooltip content="실시간 텔레메트리 갱신 주기">
+            <div className="flex items-center space-x-1 px-2 py-1 rounded-md bg-slate-900/80 border border-slate-700/60 text-slate-300">
+              <RefreshCw className="w-3 h-3 text-cyan-400" />
+              <select
+                value={pollInterval}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  onPollIntervalChange(val);
+                  sound.playClick();
+                }}
+                className="bg-transparent text-xs text-cyan-300 outline-none cursor-pointer"
+              >
+                <option value={500} className="bg-slate-900 text-slate-200">500ms (Hyper)</option>
+                <option value={1000} className="bg-slate-900 text-slate-200">1.0s (Normal)</option>
+                <option value={2000} className="bg-slate-900 text-slate-200">2.0s (Smooth)</option>
+                <option value={5000} className="bg-slate-900 text-slate-200">5.0s (Eco)</option>
+              </select>
+            </div>
+          </Tooltip>
 
           {/* Sound Toggle */}
-          <button
-            onClick={() => {
-              onToggleSound();
-              sound.playClick();
-            }}
-            className={`p-1.5 rounded-md border transition-all ${
-              soundEnabled
-                ? 'bg-cyan-950/40 border-cyan-500/40 text-cyan-400 hover:bg-cyan-900/60'
-                : 'bg-slate-900/80 border-slate-700 text-slate-500 hover:text-slate-300'
-            }`}
-            title={soundEnabled ? 'Mute Telemetry Sound' : 'Enable Telemetry Audio'}
-          >
-            {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-          </button>
+          <Tooltip content={soundEnabled ? "신디사이저 효과음 끄기 (Mute)" : "신디사이저 효과음 켜기 (Enable Audio)"}>
+            <button
+              onClick={() => {
+                onToggleSound();
+                sound.playClick();
+              }}
+              className={`p-1.5 rounded-md border transition-all ${
+                soundEnabled
+                  ? 'bg-cyan-950/40 border-cyan-500/40 text-cyan-400 hover:bg-cyan-900/60'
+                  : 'bg-slate-900/80 border-slate-700 text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            </button>
+          </Tooltip>
 
           {/* Theme Selector Dropdown */}
           <div className="relative">
-            <button
-              onClick={() => {
-                setThemeDropdownOpen(!themeDropdownOpen);
-                sound.playClick();
-              }}
-              className="flex items-center space-x-1 px-2.5 py-1 rounded-md bg-slate-900/80 border border-slate-700/60 text-slate-300 hover:border-cyan-500/40 transition-colors"
-            >
-              <Palette className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="capitalize">{theme}</span>
-            </button>
+            <Tooltip content="사이버 관제 대시보드 테마 변경">
+              <button
+                onClick={() => {
+                  setThemeDropdownOpen(!themeDropdownOpen);
+                  sound.playClick();
+                }}
+                className="flex items-center space-x-1 px-2.5 py-1 rounded-md bg-slate-900/80 border border-slate-700/60 text-slate-300 hover:border-cyan-500/40 transition-colors"
+              >
+                <Palette className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="capitalize">{theme}</span>
+              </button>
+            </Tooltip>
 
             {themeDropdownOpen && (
               <div className="absolute right-0 mt-2 w-40 rounded-lg bg-slate-900/95 border border-cyan-500/30 backdrop-blur-xl shadow-2xl py-1 z-50">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Flame, Play, Square, AlertTriangle, ShieldCheck, Zap, Activity } from 'lucide-react';
 import { sound } from '../services/sound';
+import { Tooltip } from './Tooltip';
 
 interface BenchmarkSuiteProps {
   benchmarkActive: boolean;
@@ -138,21 +139,25 @@ export const BenchmarkSuite: React.FC<BenchmarkSuiteProps> = ({ benchmarkActive 
 
         <div className="flex items-center space-x-3">
           {benchmarkActive ? (
-            <button
-              onClick={handleStop}
-              className="flex items-center space-x-1.5 px-4 py-2 rounded-md bg-rose-600 hover:bg-rose-500 text-white font-bold transition-all shadow-[0_0_15px_rgba(244,63,94,0.4)]"
-            >
-              <Square className="w-4 h-4" />
-              <span>STOP BENCHMARK</span>
-            </button>
+            <Tooltip content="진행 중인 스트레스 부하 테스트를 즉시 중단합니다">
+              <button
+                onClick={handleStop}
+                className="flex items-center space-x-1.5 px-4 py-2 rounded-md bg-rose-600 hover:bg-rose-500 text-white font-bold transition-all shadow-[0_0_15px_rgba(244,63,94,0.4)]"
+              >
+                <Square className="w-4 h-4" />
+                <span>STOP BENCHMARK</span>
+              </button>
+            </Tooltip>
           ) : (
-            <button
-              onClick={handleStart}
-              className="flex items-center space-x-1.5 px-5 py-2 rounded-md bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white font-bold transition-all shadow-[0_0_15px_rgba(168,85,247,0.4)]"
-            >
-              <Play className="w-4 h-4" />
-              <span>RUN STRESS BENCHMARK</span>
-            </button>
+            <Tooltip content="설정한 코어 및 메모리 부하를 안전하게 인가합니다">
+              <button
+                onClick={handleStart}
+                className="flex items-center space-x-1.5 px-5 py-2 rounded-md bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white font-bold transition-all shadow-[0_0_15px_rgba(168,85,247,0.4)]"
+              >
+                <Play className="w-4 h-4" />
+                <span>RUN STRESS BENCHMARK</span>
+              </button>
+            </Tooltip>
           )}
         </div>
       </div>

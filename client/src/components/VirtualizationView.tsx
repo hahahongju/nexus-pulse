@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { VirtualizationInfo, VirtualMachine } from '../types/telemetry';
 import { sound } from '../services/sound';
+import { Tooltip } from './Tooltip';
 
 interface VirtualizationViewProps {
   virt: VirtualizationInfo | null;
@@ -153,16 +154,18 @@ export const VirtualizationView: React.FC<VirtualizationViewProps> = ({ virt, on
             </div>
           </div>
 
-          <button
-            onClick={() => {
-              if (onRefresh) onRefresh();
-              sound.playClick();
-            }}
-            className="flex items-center space-x-1.5 px-3 py-1 rounded bg-slate-900 border border-slate-700 hover:border-cyan-500 text-xs font-mono text-slate-300 hover:text-cyan-400 transition-colors"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Refresh VMs</span>
-          </button>
+          <Tooltip content="가상머신 및 가상화 상태 새로고침">
+            <button
+              onClick={() => {
+                if (onRefresh) onRefresh();
+                sound.playClick();
+              }}
+              className="flex items-center space-x-1.5 px-3 py-1 rounded bg-slate-900 border border-slate-700 hover:border-cyan-500 text-xs font-mono text-slate-300 hover:text-cyan-400 transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Refresh VMs</span>
+            </button>
+          </Tooltip>
         </div>
 
         <div className="overflow-x-auto">
@@ -258,72 +261,78 @@ export const VirtualizationView: React.FC<VirtualizationViewProps> = ({ virt, on
                           
                           {/* START VM (if shut off) */}
                           {!isRunning && (
-                            <button
-                              onClick={() => handleVmAction(vm.name, 'start')}
-                              disabled={actionLoading === `${vm.name}-start`}
-                              className="px-2.5 py-1 rounded bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 text-xs font-bold transition-all flex items-center space-x-1 shadow-[0_0_8px_rgba(16,185,129,0.3)]"
-                              title="Start Virtual Machine"
-                            >
-                              <Play className="w-3.5 h-3.5" />
-                              <span>START</span>
-                            </button>
+                            <Tooltip content="가상머신 부팅 (Start VM)">
+                              <button
+                                onClick={() => handleVmAction(vm.name, 'start')}
+                                disabled={actionLoading === `${vm.name}-start`}
+                                className="px-2.5 py-1 rounded bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 text-xs font-bold transition-all flex items-center space-x-1 shadow-[0_0_8px_rgba(16,185,129,0.3)]"
+                              >
+                                <Play className="w-3.5 h-3.5" />
+                                <span>START</span>
+                              </button>
+                            </Tooltip>
                           )}
 
                           {/* RUNNING ACTIONS */}
                           {isRunning && (
                             <>
                               {/* Graceful Shutdown */}
-                              <button
-                                onClick={() => handleVmAction(vm.name, 'shutdown')}
-                                disabled={actionLoading === `${vm.name}-shutdown`}
-                                className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
-                                title="Graceful ACPI Shutdown"
-                              >
-                                <Power className="w-3.5 h-3.5 text-amber-400" />
-                              </button>
+                              <Tooltip content="ACPI 정상 종료 (Graceful Shutdown)">
+                                <button
+                                  onClick={() => handleVmAction(vm.name, 'shutdown')}
+                                  disabled={actionLoading === `${vm.name}-shutdown`}
+                                  className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+                                >
+                                  <Power className="w-3.5 h-3.5 text-amber-400" />
+                                </button>
+                              </Tooltip>
 
                               {/* Reboot */}
-                              <button
-                                onClick={() => handleVmAction(vm.name, 'reboot')}
-                                disabled={actionLoading === `${vm.name}-reboot`}
-                                className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
-                                title="Reboot Virtual Machine"
-                              >
-                                <RotateCw className="w-3.5 h-3.5 text-cyan-400" />
-                              </button>
+                              <Tooltip content="가상머신 재부팅 (Reboot VM)">
+                                <button
+                                  onClick={() => handleVmAction(vm.name, 'reboot')}
+                                  disabled={actionLoading === `${vm.name}-reboot`}
+                                  className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+                                >
+                                  <RotateCw className="w-3.5 h-3.5 text-cyan-400" />
+                                </button>
+                              </Tooltip>
 
                               {/* Pause / Resume */}
                               {isPaused ? (
-                                <button
-                                  onClick={() => handleVmAction(vm.name, 'resume')}
-                                  disabled={actionLoading === `${vm.name}-resume`}
-                                  className="p-1.5 rounded bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-800 transition-colors"
-                                  title="Resume VM Execution"
-                                >
-                                  <PlayCircle className="w-3.5 h-3.5" />
-                                </button>
+                                <Tooltip content="가상머신 실행 재개 (Resume VM)">
+                                  <button
+                                    onClick={() => handleVmAction(vm.name, 'resume')}
+                                    disabled={actionLoading === `${vm.name}-resume`}
+                                    className="p-1.5 rounded bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-800 transition-colors"
+                                  >
+                                    <PlayCircle className="w-3.5 h-3.5" />
+                                  </button>
+                                </Tooltip>
                               ) : (
-                                <button
-                                  onClick={() => handleVmAction(vm.name, 'pause')}
-                                  disabled={actionLoading === `${vm.name}-pause`}
-                                  className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
-                                  title="Pause / Suspend VM Execution"
-                                >
-                                  <PauseCircle className="w-3.5 h-3.5 text-amber-300" />
-                                </button>
+                                <Tooltip content="가상머신 일시정지 (Suspend VM)">
+                                  <button
+                                    onClick={() => handleVmAction(vm.name, 'pause')}
+                                    disabled={actionLoading === `${vm.name}-pause`}
+                                    className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+                                  >
+                                    <PauseCircle className="w-3.5 h-3.5 text-amber-300" />
+                                  </button>
+                                </Tooltip>
                               )}
 
                               {/* Force Destroy (Power Off) */}
-                              <button
-                                onClick={() => {
-                                  setDestroyModalVm(vm);
-                                  sound.playClick();
-                                }}
-                                className="p-1.5 rounded bg-rose-950/70 hover:bg-rose-900 text-rose-400 border border-rose-800 transition-colors"
-                                title="Force Stop / Power Off (Destroy)"
-                              >
-                                <Square className="w-3.5 h-3.5" />
-                              </button>
+                              <Tooltip content="강제 전원 차단 (Force Power Off)">
+                                <button
+                                  onClick={() => {
+                                    setDestroyModalVm(vm);
+                                    sound.playClick();
+                                  }}
+                                  className="p-1.5 rounded bg-rose-950/70 hover:bg-rose-900 text-rose-400 border border-rose-800 transition-colors"
+                                >
+                                  <Square className="w-3.5 h-3.5" />
+                                </button>
+                              </Tooltip>
                             </>
                           )}
 
