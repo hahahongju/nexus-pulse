@@ -1,6 +1,7 @@
 import React from 'react';
 import { Cpu, HardDrive, Network, Zap, TrendingUp, AlertTriangle } from 'lucide-react';
 import { SystemMetrics, HistoryPoint } from '../types/telemetry';
+import { formatSpeed } from '../utils/formatters';
 
 interface HeroCardsProps {
   metrics: SystemMetrics | null;
@@ -191,7 +192,7 @@ export const HeroCards: React.FC<HeroCardsProps> = ({ metrics, history }) => {
               <span className="text-sm font-normal text-slate-400">%</span>
             </div>
             <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-              Free: <span className="text-slate-200">{rootDisk ? (rootDisk.available / (1024 ** 3)).toFixed(1) : 0} GB</span> | I/O: {metrics.storage.io.rIO_sec + metrics.storage.io.wIO_sec} ops/s
+              Free: <span className="text-slate-200">{rootDisk ? (rootDisk.available / (1024 ** 3)).toFixed(1) : 0} GB</span> | I/O: <span className="text-emerald-300 font-bold">{formatSpeed(metrics.storage.io.rIO_sec + metrics.storage.io.wIO_sec)}</span>
             </div>
           </div>
           <div className="opacity-80 group-hover:opacity-100 transition-opacity">
@@ -230,8 +231,8 @@ export const HeroCards: React.FC<HeroCardsProps> = ({ metrics, history }) => {
         <div className="mt-4 flex items-end justify-between">
           <div>
             <div className="text-2xl font-extrabold font-mono tracking-tight text-white flex items-baseline space-x-2">
-              <span className="text-cyan-400 text-xl font-bold">↓{netRxKb > 1024 ? (netRxKb / 1024).toFixed(1) + 'MB' : netRxKb + 'KB'}</span>
-              <span className="text-pink-400 text-xl font-bold">↑{netTxKb > 1024 ? (netTxKb / 1024).toFixed(1) + 'MB' : netTxKb + 'KB'}</span>
+              <span className="text-cyan-400 text-lg font-bold">↓{formatSpeed(metrics.network.io.rx_sec)}</span>
+              <span className="text-pink-400 text-lg font-bold">↑{formatSpeed(metrics.network.io.tx_sec)}</span>
             </div>
             <div className="text-[11px] text-slate-400 font-mono mt-0.5">
               Accumulated: {(metrics.network.io.total_rx / (1024 ** 2)).toFixed(1)}MB Rx / {(metrics.network.io.total_tx / (1024 ** 2)).toFixed(1)}MB Tx

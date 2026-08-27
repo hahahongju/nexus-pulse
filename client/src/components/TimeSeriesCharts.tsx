@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { LineChart, Activity, RefreshCw } from 'lucide-react';
 import { HistoryPoint } from '../types/telemetry';
+import { formatKbSpeed } from '../utils/formatters';
 
 interface TimeSeriesChartsProps {
   history: HistoryPoint[];
@@ -120,8 +121,10 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({ history }) =
     // Top scale label
     ctx.fillStyle = '#94a3b8';
     ctx.font = '10px "Fira Code", monospace';
-    ctx.fillText(`${maxVal}${unit}`, 6, 14);
-    ctx.fillText(`0${unit}`, 6, height - 4);
+    const maxLabel = unit === 'KB/s' ? formatKbSpeed(maxVal) : `${maxVal}${unit}`;
+    const minLabel = unit === 'KB/s' ? '0 B/s' : `0${unit}`;
+    ctx.fillText(maxLabel, 6, 14);
+    ctx.fillText(minLabel, 6, height - 4);
   };
 
   useEffect(() => {
@@ -220,8 +223,8 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({ history }) =
                 <span className="font-mono font-bold text-xs text-slate-200">NETWORK RX (↓ CYAN) / TX (↑ PINK)</span>
               </div>
               <div className="font-mono text-xs space-x-2">
-                <span className="text-cyan-400 font-bold">{latest.netRx} KB/s</span>
-                <span className="text-pink-400 font-bold">{latest.netTx} KB/s</span>
+                <span className="text-cyan-400 font-bold">↓ {formatKbSpeed(latest.netRx)}</span>
+                <span className="text-pink-400 font-bold">↑ {formatKbSpeed(latest.netTx)}</span>
               </div>
             </div>
             <div className="h-44 w-full relative">
@@ -239,8 +242,8 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({ history }) =
                 <span className="font-mono font-bold text-xs text-slate-200">DISK READ (EMERALD) / WRITE (AMBER)</span>
               </div>
               <div className="font-mono text-xs space-x-2">
-                <span className="text-emerald-400 font-bold">{latest.diskRead} KB/s</span>
-                <span className="text-amber-400 font-bold">{latest.diskWrite} KB/s</span>
+                <span className="text-emerald-400 font-bold">↓ {formatKbSpeed(latest.diskRead)}</span>
+                <span className="text-amber-400 font-bold">↑ {formatKbSpeed(latest.diskWrite)}</span>
               </div>
             </div>
             <div className="h-44 w-full relative">

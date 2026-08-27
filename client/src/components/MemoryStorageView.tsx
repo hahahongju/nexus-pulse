@@ -1,6 +1,7 @@
 import React from 'react';
 import { HardDrive, Zap, Database, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import { MemoryMetrics, DiskItem, DiskIO } from '../types/telemetry';
+import { formatSpeed, formatBytes } from '../utils/formatters';
 
 interface MemoryStorageViewProps {
   memory: MemoryMetrics;
@@ -129,15 +130,15 @@ export const MemoryStorageView: React.FC<MemoryStorageViewProps> = ({ memory, di
             </div>
 
             {/* Disk IO Speedometer */}
-            <div className="flex items-center space-x-2 text-xs font-mono bg-slate-900/80 px-2 py-1 rounded border border-slate-700">
-              <span className="flex items-center text-emerald-400">
+            <div className="flex items-center space-x-2 text-xs font-mono bg-slate-900/80 px-2.5 py-1 rounded border border-slate-700">
+              <span className="flex items-center text-emerald-400 font-bold">
                 <ArrowDownCircle className="w-3.5 h-3.5 mr-1" />
-                {diskIO.rIO_sec} R/s
+                ↓ {formatSpeed(diskIO.rIO_sec)}
               </span>
               <span className="text-slate-600">|</span>
-              <span className="flex items-center text-amber-400">
+              <span className="flex items-center text-amber-400 font-bold">
                 <ArrowUpCircle className="w-3.5 h-3.5 mr-1" />
-                {diskIO.wIO_sec} W/s
+                ↑ {formatSpeed(diskIO.wIO_sec)}
               </span>
             </div>
           </div>
@@ -181,7 +182,7 @@ export const MemoryStorageView: React.FC<MemoryStorageViewProps> = ({ memory, di
         {/* Disk Summary */}
         <div className="mt-3 pt-2 border-t border-slate-800/80 text-xs font-mono text-slate-400 flex justify-between">
           <span>Total Partitions: <strong className="text-slate-200">{disks.length}</strong></span>
-          <span>Filesystem Read: <strong className="text-emerald-300">{diskIO.rIO || 0} ops</strong></span>
+          <span>Cumulative Disk I/O: <strong className="text-emerald-300">↓ {formatBytes(diskIO.rIO)}</strong> / <strong className="text-amber-300">↑ {formatBytes(diskIO.wIO)}</strong></span>
         </div>
       </div>
 

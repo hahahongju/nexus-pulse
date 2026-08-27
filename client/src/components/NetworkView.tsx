@@ -1,6 +1,7 @@
 import React from 'react';
 import { Network, ArrowDown, ArrowUp, Globe, Radio, Wifi } from 'lucide-react';
 import { NetworkIO, NetworkInterfaceMetric } from '../types/telemetry';
+import { formatSpeed, formatBytes } from '../utils/formatters';
 
 interface NetworkViewProps {
   networkIO: NetworkIO;
@@ -8,20 +9,6 @@ interface NetworkViewProps {
 }
 
 export const NetworkView: React.FC<NetworkViewProps> = ({ networkIO, interfaces }) => {
-  const formatSpeed = (bytesPerSec: number) => {
-    if (bytesPerSec >= 1024 * 1024) {
-      return { val: (bytesPerSec / (1024 * 1024)).toFixed(2), unit: 'MB/s' };
-    }
-    return { val: (bytesPerSec / 1024).toFixed(1), unit: 'KB/s' };
-  };
-
-  const formatTotal = (bytes: number) => {
-    if (bytes >= 1024 ** 3) {
-      return `${(bytes / (1024 ** 3)).toFixed(2)} GB`;
-    }
-    return `${(bytes / (1024 ** 2)).toFixed(1)} MB`;
-  };
-
   const rx = formatSpeed(networkIO.rx_sec);
   const tx = formatSpeed(networkIO.tx_sec);
 
@@ -43,15 +30,13 @@ export const NetworkView: React.FC<NetworkViewProps> = ({ networkIO, interfaces 
           <div className="flex items-center space-x-1.5 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-cyan-500/30 text-cyan-300">
             <ArrowDown className="w-4 h-4 text-cyan-400 animate-bounce" />
             <span>RX (Down):</span>
-            <span className="text-sm font-bold text-white">{rx.val}</span>
-            <span className="text-[10px] text-cyan-400">{rx.unit}</span>
+            <span className="text-sm font-bold text-white">{rx}</span>
           </div>
 
           <div className="flex items-center space-x-1.5 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-pink-500/30 text-pink-300">
             <ArrowUp className="w-4 h-4 text-pink-400 animate-bounce" />
             <span>TX (Up):</span>
-            <span className="text-sm font-bold text-white">{tx.val}</span>
-            <span className="text-[10px] text-pink-400">{tx.unit}</span>
+            <span className="text-sm font-bold text-white">{tx}</span>
           </div>
         </div>
       </div>
@@ -88,7 +73,7 @@ export const NetworkView: React.FC<NetworkViewProps> = ({ networkIO, interfaces 
                       <ArrowDown className="w-3 h-3 mr-1" />
                       Rx Speed:
                     </span>
-                    <span className="text-slate-200 font-bold">{ifaceRx.val} {ifaceRx.unit}</span>
+                    <span className="text-slate-200 font-bold">{ifaceRx}</span>
                   </div>
 
                   <div className="flex justify-between items-center text-slate-400">
@@ -96,12 +81,12 @@ export const NetworkView: React.FC<NetworkViewProps> = ({ networkIO, interfaces 
                       <ArrowUp className="w-3 h-3 mr-1" />
                       Tx Speed:
                     </span>
-                    <span className="text-slate-200 font-bold">{ifaceTx.val} {ifaceTx.unit}</span>
+                    <span className="text-slate-200 font-bold">{ifaceTx}</span>
                   </div>
 
                   <div className="flex justify-between items-center text-[11px] text-slate-500 pt-1">
-                    <span>Total Rx: {formatTotal(iface.rx_bytes)}</span>
-                    <span>Total Tx: {formatTotal(iface.tx_bytes)}</span>
+                    <span>Total Rx: {formatBytes(iface.rx_bytes)}</span>
+                    <span>Total Tx: {formatBytes(iface.tx_bytes)}</span>
                   </div>
                 </div>
               </div>
