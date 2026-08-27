@@ -1245,16 +1245,21 @@ class TelemetryEngine {
     if (!containerId || !/^[a-zA-Z0-9_-]+$/.test(containerId)) {
       throw new Error('Invalid container ID format.');
     }
-    const validActions = ['start', 'stop', 'restart', 'pause', 'unpause', 'rm'];
+    const validActions = ['start', 'stop', 'restart', 'pause', 'unpause', 'remove', 'delete', 'rm', 'kill'];
     const act = action.toLowerCase();
     if (!validActions.includes(act)) {
       throw new Error(`Unsupported container action: ${action}`);
     }
 
+    let dockerCmd = `docker ${act} ${containerId}`;
+    if (act === 'remove' || act === 'delete' || act === 'rm') {
+      dockerCmd = `docker rm -f ${containerId}`;
+    }
+
     return new Promise((resolve, reject) => {
-      exec(`docker ${act} ${containerId}`, (err, stdout, stderr) => {
+      exec(dockerCmd, (err, stdout, stderr) => {
         if (err) {
-          this.addLog('ERROR', `Container action failed: docker ${act} ${containerId} -> ${stderr || err.message}`, 'docker');
+          this.addLog('ERROR', `Container action failed: ${dockerCmd} -> ${stderr || err.message}`, 'docker');
           return reject(new Error(stderr || err.message));
         }
         this.addLog('SUCCESS', `Container ${containerId} ${act} executed successfully.`, 'docker');
@@ -1286,7 +1291,7 @@ class TelemetryEngine {
 
   async deployDemoContainer() {
     return new Promise((resolve, reject) => {
-      exec('docker run -d --name nexus-pulse-demo -p 8899:80 nginx:alpine || docker run -d --name nexus-pulse-demo alpine sleep 3600', (err, stdout, stderr) => {
+      exec('docker rm -f nexus-pulse-demo 2>/dev/null; docker run -d --name nexus-pulse-demo -p 8899:80 nginx:alpine || docker run -d --name nexus-pulse-demo alpine sleep 3600', (err, stdout, stderr) => {
         if (err) {
           this.addLog('ERROR', `Failed to deploy demo container: ${stderr || err.message}`, 'docker');
           return reject(new Error(stderr || err.message));

@@ -289,12 +289,26 @@ apiRouter.post('/containers/demo/deploy', async (req, res) => {
 
 /**
  * POST /api/containers/:id/:action
- * Execute lifecycle action on container (start, stop, restart, pause, unpause)
+ * Execute lifecycle action on container (start, stop, restart, pause, unpause, remove)
  */
 apiRouter.post('/containers/:id/:action', async (req, res) => {
   try {
     const { id, action } = req.params;
     const result = await telemetry.containerAction(id, action);
+    res.json({ status: 'ok', data: result });
+  } catch (err) {
+    res.status(400).json({ status: 'error', message: err.message });
+  }
+});
+
+/**
+ * DELETE /api/containers/:id
+ * Remove / Delete container (docker rm -f)
+ */
+apiRouter.delete('/containers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await telemetry.containerAction(id, 'remove');
     res.json({ status: 'ok', data: result });
   } catch (err) {
     res.status(400).json({ status: 'error', message: err.message });

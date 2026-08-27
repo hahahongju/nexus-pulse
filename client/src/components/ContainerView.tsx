@@ -16,6 +16,8 @@ import {
   AlertCircle, 
   PauseCircle, 
   PlayCircle,
+  Trash2,
+  AlertTriangle,
   X,
   FileText
 } from 'lucide-react';
@@ -32,6 +34,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ docker, containers
   const [filterState, setFilterState] = useState<string>('ALL');
   const [search, setSearch] = useState('');
   const [selectedLogsContainer, setSelectedLogsContainer] = useState<DockerContainer | null>(null);
+  const [deleteModalContainer, setDeleteModalContainer] = useState<DockerContainer | null>(null);
   const [logs, setLogs] = useState<Array<{ timestamp: string; message: string }>>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
@@ -44,7 +47,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ docker, containers
     return `${(bytes / 1024).toFixed(0)} KB`;
   };
 
-  const handleAction = async (id: string, action: 'start' | 'stop' | 'restart' | 'pause' | 'unpause') => {
+  const handleAction = async (id: string, action: 'start' | 'stop' | 'restart' | 'pause' | 'unpause' | 'remove' | 'delete') => {
     setActionLoadingId(`${id}-${action}`);
     try {
       sound.playClick();
@@ -460,6 +463,18 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ docker, containers
                           >
                             <RotateCw className="w-3.5 h-3.5 text-amber-400" />
                           </button>
+
+                          {/* Delete Container */}
+                          <button
+                            onClick={() => {
+                              setDeleteModalContainer(c);
+                              sound.playClick();
+                            }}
+                            className="p-1 rounded bg-rose-950/40 hover:bg-rose-900 border border-rose-800/80 text-rose-400 transition-colors"
+                            title="Delete Container (docker rm -f)"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -525,6 +540,44 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ docker, containers
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* 4. CONTAINER DELETE CONFIRMATION MODAL */}
+      {deleteModalContainer && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="cyber-card p-6 max-w-md w-full border-rose-500/50 shadow-[0_0_30px_rgba(244,63,94,0.3)] animate-fade-in">
+            <div className="flex items-center space-x-3 mb-4 text-rose-400">
+              <AlertTriangle className="w-6 h-6" />
+              <h4 className="text-base font-bold uppercase tracking-wider text-white">DELETE CONTAINER (DOCKER RM)</h4>
+            </div>
+
+            <p className="text-xs text-slate-300 font-mono mb-4 leading-relaxed">
+              Are you sure you want to delete container <strong className="text-cyan-400">{deleteModalContainer.name}</strong> (ID: <strong className="text-rose-400">{deleteModalContainer.id}</strong>)?
+              <br/><br/>
+              Image: <span className="text-purple-300">{deleteModalContainer.image}</span>
+              <br/>
+              <span className="text-amber-400 mt-2 block font-semibold">Warning: This forcefully removes the container and all unmounted ephemeral data.</span>
+            </p>
+
+            <div className="flex justify-end space-x-2 font-mono text-xs pt-3 border-t border-slate-800">
+              <button
+                onClick={() => setDeleteModalContainer(null)}
+                className="px-4 py-2 rounded bg-slate-800 hover:bg-slate-700 text-slate-300"
+              >
+                CANCEL
+              </button>
+              <button
+                onClick={() => {
+                  handleAction(deleteModalContainer.id, 'remove');
+                  setDeleteModalContainer(null);
+                }}
+                className="px-4 py-2 rounded bg-rose-600 hover:bg-rose-500 text-white font-bold transition-all shadow-[0_0_15px_rgba(244,63,94,0.4)]"
+              >
+                DELETE CONTAINER
+              </button>
+            </div>
           </div>
         </div>
       )}
