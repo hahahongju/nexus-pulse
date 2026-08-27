@@ -1,0 +1,16 @@
+[Unit]
+Description=NexusPulse - Next-Gen Server Monitoring & Operations OS
+After=network.target
+
+[Service]
+Type=simple
+User=hongju
+WorkingDirectory=/home/hongju/workspace/nexus-pulse
+ExecStart=/usr/bin/node /home/hongju/workspace/nexus-pulse/server/index.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+Environment=PORT=4500
+
+[Install]
+WantedBy=multi-user.target

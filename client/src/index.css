@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-mono: 'Fira Code', monospace;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  
+  /* Cyber Theme (Default) */
+  --bg-primary: #070b12;
+  --bg-surface: rgba(15, 23, 42, 0.75);
+  --bg-surface-hover: rgba(30, 41, 59, 0.85);
+  --accent-primary: #00f0ff;
+  --accent-primary-glow: rgba(0, 240, 255, 0.35);
+  --accent-secondary: #a855f7;
+  --accent-success: #10b981;
+  --accent-warning: #f59e0b;
+  --accent-danger: #f43f5e;
+  --border-color: rgba(56, 189, 248, 0.2);
+  --border-glow: rgba(0, 240, 255, 0.4);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+}
+
+[data-theme="matrix"] {
+  --bg-primary: #040d08;
+  --bg-surface: rgba(6, 25, 14, 0.8);
+  --bg-surface-hover: rgba(12, 38, 22, 0.9);
+  --accent-primary: #10b981;
+  --accent-primary-glow: rgba(16, 185, 129, 0.4);
+  --accent-secondary: #22c55e;
+  --accent-success: #34d399;
+  --accent-warning: #f59e0b;
+  --accent-danger: #ef4444;
+  --border-color: rgba(16, 185, 129, 0.25);
+  --border-glow: rgba(16, 185, 129, 0.5);
+  --text-main: #e2fbe8;
+  --text-muted: #6ee7b7;
+}
+
+[data-theme="synthwave"] {
+  --bg-primary: #0f071b;
+  --bg-surface: rgba(28, 13, 48, 0.8);
+  --bg-surface-hover: rgba(43, 20, 74, 0.9);
+  --accent-primary: #ec4899;
+  --accent-primary-glow: rgba(236, 72, 153, 0.4);
+  --accent-secondary: #00f0ff;
+  --accent-success: #10b981;
+  --accent-warning: #f97316;
+  --accent-danger: #f43f5e;
+  --border-color: rgba(236, 72, 153, 0.3);
+  --border-glow: rgba(236, 72, 153, 0.6);
+  --text-main: #fdf2f8;
+  --text-muted: #f472b6;
+}
+
+[data-theme="solar"] {
+  --bg-primary: #120d06;
+  --bg-surface: rgba(30, 20, 8, 0.85);
+  --bg-surface-hover: rgba(46, 31, 12, 0.95);
+  --accent-primary: #f59e0b;
+  --accent-primary-glow: rgba(245, 158, 11, 0.4);
+  --accent-secondary: #f97316;
+  --accent-success: #10b981;
+  --accent-warning: #fbbf24;
+  --accent-danger: #ef4444;
+  --border-color: rgba(245, 158, 11, 0.25);
+  --border-glow: rgba(245, 158, 11, 0.55);
+  --text-main: #fffbeb;
+  --text-muted: #fcd34d;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+}
+
+.cyber-card {
+  background: var(--bg-surface);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+  transition: all 0.2s ease-in-out;
+}
+
+.cyber-card:hover {
+  border-color: var(--border-glow);
+  box-shadow: 0 0 15px var(--accent-primary-glow);
+}
+
+.cyber-card-glow {
+  border-color: var(--border-glow);
+  box-shadow: 0 0 18px var(--accent-primary-glow);
+}
+
+.neon-text {
+  color: var(--accent-primary);
+  text-shadow: 0 0 10px var(--accent-primary-glow);
+}
+
+.neon-text-pink {
+  color: #ec4899;
+  text-shadow: 0 0 10px rgba(236, 72, 153, 0.4);
+}
+
+.neon-border {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 10px var(--accent-primary-glow);
+}
+
+/* Custom Cyber Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary);
+}

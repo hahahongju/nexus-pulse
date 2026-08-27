@@ -1,0 +1,26 @@
+{
+  "name": "nexus-pulse",
+  "version": "1.0.0",
+  "description": "NexusPulse - Next-Gen Autonomous Real-Time Server Telemetry & Operations Dashboard",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev:server": "node server/index.js",
+    "dev:client": "npm --prefix client run dev",
+    "dev": "npm run build:client && node server/index.js",
+    "build:client": "npm --prefix client run build",
+    "build": "npm run build:client",
+    "test": "node scripts/test-telemetry.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "systeminformation": "^5.25.11",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  },
+  "author": "NexusPulse Core Team",
+  "license": "MIT"
+}

@@ -1,0 +1,41 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        cyber: {
+          bg: '#080c14',
+          surface: '#0f172a',
+          surfaceLight: '#1e293b',
+          border: 'rgba(56, 189, 248, 0.2)',
+          cyan: '#00f0ff',
+          neonGreen: '#10b981',
+          neonPurple: '#a855f7',
+          neonPink: '#ec4899',
+          amber: '#f59e0b',
+          rose: '#f43f5e',
+        }
+      },
+      fontFamily: {
+        mono: ['JetBrains Mono', 'Fira Code', 'Courier New', 'monospace'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+      },
+      animation: {
+        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'glow': 'glow 2s ease-in-out infinite alternate',
+      },
+      keyframes: {
+        glow: {
+          '0%': { boxShadow: '0 0 5px rgba(0, 240, 255, 0.2), inset 0 0 5px rgba(0, 240, 255, 0.1)' },
+          '100%': { boxShadow: '0 0 20px rgba(0, 240, 255, 0.6), inset 0 0 10px rgba(0, 240, 255, 0.3)' },
+        }
+      }
+    },
+  },
+  plugins: [],
+}
