@@ -1,6 +1,6 @@
 class SoundEngine {
   private ctx: AudioContext | null = null;
-  public enabled: boolean = true;
+  public enabled: boolean = false;
 
   constructor() {
     // AudioContext will be initialized on first user interaction

@@ -10,7 +10,7 @@
     "dev": "npm run build:client && node server/index.js",
     "build:client": "npm --prefix client run build",
     "build": "npm run build:client",
-    "test": "node scripts/test-telemetry.js"
+    "test": "node scripts/test-telemetry.js && node scripts/test-downloads.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

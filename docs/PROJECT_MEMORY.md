@@ -7,7 +7,7 @@
 ## 1. 📌 프로젝트 개요 및 핵심 메타데이터
 
 - **프로젝트 명**: NexusPulse (넥서스펄스) - Next-Gen Server Telemetry & Operations OS
-- **로컬 디렉토리**: `/home/hongju/workspace/nexus-pulse/`
+- **로컬 디렉토리**: `/mnt/workspace/nexus-pulse/`
 - **GitHub 저장소**: [https://github.com/hahahongju/nexus-pulse](https://github.com/hahahongju/nexus-pulse)
 - **기본 서비스 포트**: `4500` (HTTP & WebSocket 통합)
 - **주요 기술 스택**:
@@ -106,19 +106,19 @@ nexus-pulse/
 
 ```bash
 # 1. 원클릭 전체 빌드 및 실행
-bash /home/hongju/workspace/nexus-pulse/start.sh
+bash /mnt/workspace/nexus-pulse/start.sh
 
 # 2. 백엔드 서버 단독 실행
-cd /home/hongju/workspace/nexus-pulse && node server/index.js
+cd /mnt/workspace/nexus-pulse && node server/index.js
 
 # 3. 프론트엔드 빌드 (TypeScript + Vite)
-npm --prefix /home/hongju/workspace/nexus-pulse/client run build
+npm --prefix /mnt/workspace/nexus-pulse/client run build
 
 # 4. E2E 전체 스택 자동 검증 테스트
-node /home/hongju/workspace/nexus-pulse/scripts/verify-full-stack.js
+node /mnt/workspace/nexus-pulse/scripts/verify-full-stack.js
 
 # 5. systemd 서비스 등록 및 자동 시작
-sudo cp /home/hongju/workspace/nexus-pulse/nexuspulse.service /etc/systemd/system/
+sudo cp /mnt/workspace/nexus-pulse/nexuspulse.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now nexuspulse
 ```
@@ -134,8 +134,8 @@ sudo systemctl enable --now nexuspulse
   - `nvme0n1p3`: 235.4 GB (LVM 볼륨 그룹: `ubuntu-vg`)
     - `ubuntu--vg-ubuntu--lv`: 기본 100 GB (마운트 경로: `/`)
     - **LVM 미할당 여유 공간**: 약 135.4 GB
-- **HDD 1 (대용량 스토리지)**: `sda` 2.7 TB (`/dev/sda1` -> `/srv/storage`, 2.0 TB)
-- **HDD 2 (작업용 스토리지)**: `sdb` 149.1 GB (`/dev/sdb2` -> `/srv/work`, 146 GB)
+- **HDD 1 (대용량 스토리지)**: `sda` 2.7 TB (`/dev/sda1` -> `/mnt/storage`, 2.0 TB)
+- **HDD 2 (작업용 스토리지)**: `sdb` 149.1 GB (`/dev/sdb2` -> `/mnt/work`, 146 GB)
 
 ### LVM 루트 파티션(`/`) 100% 전체 확장 명령어
 우분투 기본 설치 시 100GB만 잡혀있는 루트 파티션을 SSD 전체 용량(약 235GB)으로 온라인 실시간 확장할 때 사용하는 명령어:

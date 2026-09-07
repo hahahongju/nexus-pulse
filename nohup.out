@@ -1,0 +1,20 @@
+============================================================
+⚡ NexusPulse // Next-Gen Server Telemetry & Operations OS ⚡
+============================================================
+  • Directory: /mnt/workspace/nexus-pulse
+  • Port:      4500
+  • Node:      v22.22.1
+============================================================
+🚀 Starting NexusPulse Server on http://localhost:4500 ...
+
+============================================================
+  ⚡ NexusPulse Telemetry & Operations Server Started ⚡
+============================================================
+  • Port:            4500
+  • REST API Base:   http://localhost:4500/api
+  • WebSocket URL:   ws://localhost:4500/ws
+  • Node Version:    v22.22.1
+  • Host Platform:   linux (x64)
+  • PID:             164200
+============================================================
+      

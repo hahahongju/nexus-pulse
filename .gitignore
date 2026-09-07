@@ -11,6 +11,7 @@ dist/
 logs/
 .system_generated/
 scratch/
+data/*.json
 
 # Environment files
 .env

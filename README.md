@@ -55,6 +55,12 @@
 - CPU/RAM/Disk 임계값 슬라이더 설정.
 - Web Audio API 기반 미래형 전자음(경보, 알람, 클릭, 탭 전환) 오디오 피드백 (온/오프 지원).
 
+### 10. Download Center
+- Transmission RPC 큐 조회와 Magnet/torrent URL 추가, 시작, 정지, 제거.
+- `yt-dlp` 기반 YouTube 다운로드 작업과 진행 상태 표시.
+- USB/외장 디스크 후보 탐지, 기본 저장 위치 변경 및 쓰기 상태 진단.
+- 상세 운영 설계: [`docs/DOWNLOAD_CENTER.md`](docs/DOWNLOAD_CENTER.md)
+
 ### 8. 4가지 프리셋 테마
 - ⚡ **Cyber Neon** (기본 - 네온 시안 & 바이올렛)
 - 🟢 **Matrix Terminal** (인광 에메랄드 & 딥 포레스트)

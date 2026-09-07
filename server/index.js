@@ -17,6 +17,7 @@ const express = require('express');
 const cors = require('cors');
 const { WebSocketServer, WebSocket } = require('ws');
 const telemetry = require('./telemetry');
+const downloads = require('./downloadManager');
 
 const app = express();
 const DEFAULT_PORT = parseInt(process.env.PORT, 10) || 4500;
@@ -355,6 +356,48 @@ apiRouter.post('/vms/:name/:action', async (req, res) => {
   } catch (err) {
     res.status(400).json({ status: 'error', message: err.message });
   }
+});
+
+apiRouter.get('/downloads/status', (req, res) => {
+  res.json({ status: 'ok', data: downloads.getStatus() });
+});
+
+apiRouter.post('/downloads/request', async (req, res) => {
+  try { res.json({ status: 'ok', data: await downloads.requestWithHermes(req.body?.prompt) }); }
+  catch (err) { res.status(400).json({ status: 'error', message: err.message }); }
+});
+
+apiRouter.put('/downloads/settings', (req, res) => {
+  try { res.json({ status: 'ok', data: downloads.saveSettings(req.body || {}) }); }
+  catch (err) { res.status(400).json({ status: 'error', message: err.message }); }
+});
+
+apiRouter.get('/downloads/transmission', async (req, res) => {
+  res.json({ status: 'ok', data: await downloads.getTransmission() });
+});
+
+apiRouter.post('/downloads/transmission', async (req, res) => {
+  try { res.json({ status: 'ok', data: await downloads.addTorrent(req.body?.uri) }); }
+  catch (err) { res.status(400).json({ status: 'error', message: err.message }); }
+});
+
+apiRouter.post('/downloads/transmission/:id/:action', async (req, res) => {
+  try { res.json({ status: 'ok', data: await downloads.torrentAction(req.params.id, req.params.action) }); }
+  catch (err) { res.status(400).json({ status: 'error', message: err.message }); }
+});
+
+apiRouter.get('/downloads/youtube', (req, res) => {
+  res.json({ status: 'ok', data: downloads.listYoutubeJobs() });
+});
+
+apiRouter.post('/downloads/youtube', (req, res) => {
+  try { res.status(202).json({ status: 'ok', data: downloads.startYoutube(req.body?.url, req.body?.quality) }); }
+  catch (err) { res.status(400).json({ status: 'error', message: err.message }); }
+});
+
+apiRouter.post('/downloads/youtube/:id/:action', (req, res) => {
+  try { res.json({ status: 'ok', data: downloads.youtubeAction(req.params.id, req.params.action) }); }
+  catch (err) { res.status(400).json({ status: 'error', message: err.message }); }
 });
 
 // Mount API router

@@ -12,7 +12,8 @@ import {
   ShieldAlert,
   Server,
   Zap,
-  Box
+  Box,
+  Download
 } from 'lucide-react';
 
 import { 
@@ -43,8 +44,9 @@ import { PortScanner } from './components/PortScanner';
 import { AlertsBanner } from './components/AlertsBanner';
 import { ContainerView } from './components/ContainerView';
 import { VirtualizationView } from './components/VirtualizationView';
+import { DownloadCenter } from './components/DownloadCenter';
 
-type TabKey = 'overview' | 'charts' | 'processes' | 'containers' | 'logs' | 'benchmark' | 'ports';
+type TabKey = 'overview' | 'charts' | 'processes' | 'containers' | 'downloads' | 'logs' | 'benchmark' | 'ports';
 
 export const App: React.FC = () => {
   const [overview, setOverview] = useState<SystemOverview | null>(null);
@@ -67,7 +69,7 @@ export const App: React.FC = () => {
   const [uptimeSec, setUptimeSec] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [theme, setTheme] = useState<ThemeMode>('cyber');
-  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(false);
   const [pollInterval, setPollInterval] = useState<number>(1000);
 
   // Apply theme to document
@@ -213,6 +215,7 @@ export const App: React.FC = () => {
     { key: 'charts', label: 'Oscilloscope', icon: <LineChart className="w-4 h-4" /> },
     { key: 'processes', label: 'Processes', icon: <Terminal className="w-4 h-4" /> },
     { key: 'containers', label: 'Containers & VMs', icon: <Box className="w-4 h-4" />, badge: totalInstancesCount > 0 ? totalInstancesCount : undefined },
+    { key: 'downloads', label: 'Downloads', icon: <Download className="w-4 h-4" /> },
     { key: 'logs', label: 'System Logs', icon: <Activity className="w-4 h-4" />, badge: logs.length },
     { key: 'benchmark', label: 'Stress Benchmark', icon: <Flame className="w-4 h-4" /> },
     { key: 'ports', label: 'Ports & Sockets', icon: <Radio className="w-4 h-4" /> },
@@ -333,6 +336,8 @@ export const App: React.FC = () => {
               />
             </div>
           )}
+
+          {activeTab === 'downloads' && <DownloadCenter />}
 
           {/* TAB 5: SYSTEM LOGS TERMINAL */}
           {activeTab === 'logs' && (
