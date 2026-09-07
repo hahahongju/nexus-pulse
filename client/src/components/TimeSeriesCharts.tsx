@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { LineChart, Activity, RefreshCw } from 'lucide-react';
+import { LineChart } from 'lucide-react';
 import { HistoryPoint } from '../types/telemetry';
 import { formatKbSpeed } from '../utils/formatters';
 
@@ -39,14 +39,14 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({ history }) =
     ctx.clearRect(0, 0, width, height);
 
     if (points.length < 2) {
-      ctx.fillStyle = '#64748b';
-      ctx.font = '12px "Fira Code", monospace';
-      ctx.fillText('Collecting telemetry samples...', 20, height / 2);
+      ctx.fillStyle = '#71717a';
+      ctx.font = '11px "JetBrains Mono", monospace';
+      ctx.fillText('Accumulating rolling telemetry window...', 16, height / 2);
       return;
     }
 
-    // Grid lines
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    // Grid lines - 1px razor whisper dividers
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
     ctx.lineWidth = 1;
     for (let i = 1; i < 4; i++) {
       const y = (height / 4) * i;
@@ -70,14 +70,14 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({ history }) =
       const coords = data.map((d, i) => {
         const x = i * stepX;
         const norm = Math.min(1, Math.max(0, (d.value - minVal) / (maxVal - minVal || 1)));
-        const y = height - norm * (height - 20) - 10;
+        const y = height - norm * (height - 24) - 12;
         return { x, y };
       });
 
-      // Fill gradient
+      // Subtle gradient fill for primary series
       if (!isSecondary) {
         const grad = ctx.createLinearGradient(0, 0, 0, height);
-        grad.addColorStop(0, strokeColor.replace('rgb', 'rgba').replace(')', ', 0.35)'));
+        grad.addColorStop(0, strokeColor.replace('rgb', 'rgba').replace(')', ', 0.18)'));
         grad.addColorStop(1, strokeColor.replace('rgb', 'rgba').replace(')', ', 0.0)'));
 
         ctx.beginPath();
@@ -89,10 +89,10 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({ history }) =
         ctx.fill();
       }
 
-      // Line stroke
+      // Smooth Stroke
       ctx.beginPath();
       ctx.strokeStyle = strokeColor;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.75;
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
       coords.forEach((c, i) => {
@@ -101,14 +101,14 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({ history }) =
       });
       ctx.stroke();
 
-      // Current latest value dot
+      // Current latest value micro dot
       const last = coords[coords.length - 1];
       ctx.beginPath();
-      ctx.arc(last.x, last.y, 4, 0, Math.PI * 2);
+      ctx.arc(last.x, last.y, 3, 0, Math.PI * 2);
       ctx.fillStyle = strokeColor;
       ctx.fill();
-      ctx.strokeStyle = '#080c14';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#09090b';
+      ctx.lineWidth = 1.5;
       ctx.stroke();
     };
 
@@ -118,30 +118,30 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({ history }) =
       renderSeries(points2, color2, true);
     }
 
-    // Top scale label
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '10px "Fira Code", monospace';
+    // Scale labels in monospace
+    ctx.fillStyle = '#71717a';
+    ctx.font = '10px "JetBrains Mono", monospace';
     const maxLabel = unit === 'KB/s' ? formatKbSpeed(maxVal) : `${maxVal}${unit}`;
     const minLabel = unit === 'KB/s' ? '0 B/s' : `0${unit}`;
-    ctx.fillText(maxLabel, 6, 14);
-    ctx.fillText(minLabel, 6, height - 4);
+    ctx.fillText(maxLabel, 8, 14);
+    ctx.fillText(minLabel, 8, height - 6);
   };
 
   useEffect(() => {
     // Draw CPU
     const cpuPoints = history.map((h) => ({ label: h.timeLabel, value: h.cpu }));
     const loadPoints = history.map((h) => ({ label: h.timeLabel, value: h.load1 * 10 }));
-    drawCanvasChart(cpuCanvasRef.current, cpuPoints, 'rgb(0, 240, 255)', 'rgb(245, 158, 11)', loadPoints, '%', 100);
+    drawCanvasChart(cpuCanvasRef.current, cpuPoints, 'rgb(6, 182, 212)', 'rgb(245, 158, 11)', loadPoints, '%', 100);
 
     // Draw RAM
     const ramPoints = history.map((h) => ({ label: h.timeLabel, value: h.ram }));
     const swapPoints = history.map((h) => ({ label: h.timeLabel, value: h.swap }));
-    drawCanvasChart(memCanvasRef.current, ramPoints, 'rgb(168, 85, 247)', 'rgb(16, 185, 129)', swapPoints, '%', 100);
+    drawCanvasChart(memCanvasRef.current, ramPoints, 'rgb(99, 102, 241)', 'rgb(16, 185, 129)', swapPoints, '%', 100);
 
     // Draw Network
     const netRx = history.map((h) => ({ label: h.timeLabel, value: h.netRx }));
     const netTx = history.map((h) => ({ label: h.timeLabel, value: h.netTx }));
-    drawCanvasChart(netCanvasRef.current, netRx, 'rgb(0, 240, 255)', 'rgb(236, 72, 153)', netTx, 'KB/s');
+    drawCanvasChart(netCanvasRef.current, netRx, 'rgb(6, 182, 212)', 'rgb(16, 185, 129)', netTx, 'KB/s');
 
     // Draw Disk
     const diskR = history.map((h) => ({ label: h.timeLabel, value: h.diskRead }));
@@ -153,22 +153,24 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({ history }) =
 
   return (
     <div className="space-y-4">
-      {/* Chart Selector Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 cyber-card p-3">
+      {/* Chart Filter Control Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 stitch-panel p-3">
         <div className="flex items-center space-x-2">
-          <LineChart className="w-5 h-5 text-cyan-400" />
-          <span className="text-sm font-bold uppercase tracking-wider text-slate-200">REAL-TIME OSCILLOSCOPE (60s WINDOW)</span>
+          <LineChart className="w-4 h-4 text-[var(--accent-primary)]" />
+          <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-main)] font-mono">
+            60-Second Rolling Oscilloscope
+          </span>
         </div>
 
-        <div className="flex items-center space-x-1.5 font-mono text-xs">
+        <div className="flex items-center space-x-1 font-mono text-xs">
           {(['all', 'cpu', 'ram', 'net', 'disk'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setSelectedChart(tab)}
-              className={`px-3 py-1 rounded-md transition-colors uppercase ${
+              className={`px-3 py-1 rounded-md transition-colors uppercase font-semibold ${
                 selectedChart === tab
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
-                  : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800'
+                  ? 'bg-[var(--accent-primary-muted)] text-[var(--accent-primary)] border border-[var(--border-focus)]'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-main)] border border-transparent'
               }`}
             >
               {tab}
@@ -182,14 +184,14 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({ history }) =
         
         {/* CPU CHART */}
         {(selectedChart === 'all' || selectedChart === 'cpu') && (
-          <div className="cyber-card p-4 flex flex-col justify-between">
+          <div className="stitch-panel p-4 flex flex-col justify-between">
             <div className="flex justify-between items-center mb-2">
               <div className="flex items-center space-x-2">
-                <span className="w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(0,240,255,0.6)]" />
-                <span className="font-mono font-bold text-xs text-slate-200">CPU UTILIZATION (%)</span>
-                <span className="text-[11px] font-mono text-amber-400 ml-2">--- 1m Load Avg</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
+                <span className="font-mono font-semibold text-xs text-[var(--text-main)]">CPU COMPUTE LOAD (%)</span>
+                <span className="text-[10px] font-mono text-amber-400 ml-1.5">• 1m Load</span>
               </div>
-              <span className="font-mono font-bold text-cyan-400 text-sm">{latest.cpu.toFixed(1)}%</span>
+              <span className="font-mono font-bold text-cyan-400 text-xs tabular-nums">{latest.cpu.toFixed(1)}%</span>
             </div>
             <div className="h-44 w-full relative">
               <canvas ref={cpuCanvasRef} className="w-full h-full block" />
@@ -199,14 +201,14 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({ history }) =
 
         {/* MEMORY CHART */}
         {(selectedChart === 'all' || selectedChart === 'ram') && (
-          <div className="cyber-card p-4 flex flex-col justify-between">
+          <div className="stitch-panel p-4 flex flex-col justify-between">
             <div className="flex justify-between items-center mb-2">
               <div className="flex items-center space-x-2">
-                <span className="w-3 h-3 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.6)]" />
-                <span className="font-mono font-bold text-xs text-slate-200">MEMORY ALLOCATION (%)</span>
-                <span className="text-[11px] font-mono text-emerald-400 ml-2">--- Swap %</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-indigo-400" />
+                <span className="font-mono font-semibold text-xs text-[var(--text-main)]">RAM ALLOCATION (%)</span>
+                <span className="text-[10px] font-mono text-emerald-400 ml-1.5">• Swap</span>
               </div>
-              <span className="font-mono font-bold text-purple-400 text-sm">{latest.ram.toFixed(1)}%</span>
+              <span className="font-mono font-bold text-indigo-400 text-xs tabular-nums">{latest.ram.toFixed(1)}%</span>
             </div>
             <div className="h-44 w-full relative">
               <canvas ref={memCanvasRef} className="w-full h-full block" />
@@ -216,15 +218,15 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({ history }) =
 
         {/* NETWORK CHART */}
         {(selectedChart === 'all' || selectedChart === 'net') && (
-          <div className="cyber-card p-4 flex flex-col justify-between">
+          <div className="stitch-panel p-4 flex flex-col justify-between">
             <div className="flex justify-between items-center mb-2">
               <div className="flex items-center space-x-2">
-                <span className="w-3 h-3 rounded-full bg-cyan-400" />
-                <span className="font-mono font-bold text-xs text-slate-200">NETWORK RX (↓ CYAN) / TX (↑ PINK)</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
+                <span className="font-mono font-semibold text-xs text-[var(--text-main)]">NETWORK BANDWIDTH</span>
               </div>
-              <div className="font-mono text-xs space-x-2">
-                <span className="text-cyan-400 font-bold">↓ {formatKbSpeed(latest.netRx)}</span>
-                <span className="text-pink-400 font-bold">↑ {formatKbSpeed(latest.netTx)}</span>
+              <div className="font-mono text-xs space-x-2 tabular-nums">
+                <span className="text-cyan-400 font-medium">↓ {formatKbSpeed(latest.netRx)}</span>
+                <span className="text-emerald-400 font-medium">↑ {formatKbSpeed(latest.netTx)}</span>
               </div>
             </div>
             <div className="h-44 w-full relative">
@@ -235,15 +237,15 @@ export const TimeSeriesCharts: React.FC<TimeSeriesChartsProps> = ({ history }) =
 
         {/* DISK IO CHART */}
         {(selectedChart === 'all' || selectedChart === 'disk') && (
-          <div className="cyber-card p-4 flex flex-col justify-between">
+          <div className="stitch-panel p-4 flex flex-col justify-between">
             <div className="flex justify-between items-center mb-2">
               <div className="flex items-center space-x-2">
-                <span className="w-3 h-3 rounded-full bg-emerald-400" />
-                <span className="font-mono font-bold text-xs text-slate-200">DISK READ (EMERALD) / WRITE (AMBER)</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                <span className="font-mono font-semibold text-xs text-[var(--text-main)]">DISK I/O RATE</span>
               </div>
-              <div className="font-mono text-xs space-x-2">
-                <span className="text-emerald-400 font-bold">↓ {formatKbSpeed(latest.diskRead)}</span>
-                <span className="text-amber-400 font-bold">↑ {formatKbSpeed(latest.diskWrite)}</span>
+              <div className="font-mono text-xs space-x-2 tabular-nums">
+                <span className="text-emerald-400 font-medium">R: {formatKbSpeed(latest.diskRead)}</span>
+                <span className="text-amber-400 font-medium">W: {formatKbSpeed(latest.diskWrite)}</span>
               </div>
             </div>
             <div className="h-44 w-full relative">

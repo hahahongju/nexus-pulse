@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Bell, Settings, X, Check, Volume2 } from 'lucide-react';
+import { AlertTriangle, Settings, X } from 'lucide-react';
 import { AlertItem, AlertRules } from '../types/telemetry';
 import { sound } from '../services/sound';
 
@@ -38,22 +38,22 @@ export const AlertsBanner: React.FC<AlertsBannerProps> = ({ alerts, rules, onUpd
           {alerts.map((alert) => (
             <div
               key={alert.id}
-              className={`p-3.5 rounded-lg border flex items-center justify-between font-mono text-xs shadow-lg animate-bounce-short ${
+              className={`p-3 rounded-lg border flex items-center justify-between font-mono text-xs transition-all ${
                 alert.severity === 'CRITICAL'
-                  ? 'bg-rose-950/80 border-rose-500/80 text-rose-200 shadow-[0_0_20px_rgba(244,63,94,0.4)]'
-                  : 'bg-amber-950/80 border-amber-500/80 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.3)]'
+                  ? 'bg-rose-500/10 border-rose-500/40 text-rose-300'
+                  : 'bg-amber-500/10 border-amber-500/40 text-amber-300'
               }`}
             >
               <div className="flex items-center space-x-3">
-                <AlertTriangle className={`w-5 h-5 shrink-0 ${alert.severity === 'CRITICAL' ? 'text-rose-400 animate-pulse' : 'text-amber-400'}`} />
+                <AlertTriangle className={`w-4 h-4 shrink-0 ${alert.severity === 'CRITICAL' ? 'text-rose-400 animate-pulse' : 'text-amber-400'}`} />
                 <div>
                   <span className="font-bold uppercase tracking-wider mr-2">[{alert.severity}]</span>
-                  <span>{alert.message}</span>
-                  <span className="text-[11px] text-slate-400 ml-2">(Val: {alert.value} / Thr: {alert.threshold})</span>
+                  <span className="text-[var(--text-main)] font-medium">{alert.message}</span>
+                  <span className="text-[10px] text-[var(--text-muted)] ml-2">(Metric: {alert.value}% / Limit: {alert.threshold}%)</span>
                 </div>
               </div>
 
-              <div className="text-[11px] text-slate-400">
+              <div className="text-[10px] text-[var(--text-muted)] tabular-nums">
                 {new Date(alert.timestamp).toLocaleTimeString()}
               </div>
             </div>
@@ -63,14 +63,16 @@ export const AlertsBanner: React.FC<AlertsBannerProps> = ({ alerts, rules, onUpd
 
       {/* Threshold Config Modal */}
       {configOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="cyber-card p-6 max-w-lg w-full border-cyan-500/40 shadow-2xl">
-            <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-800">
-              <div className="flex items-center space-x-2 text-cyan-400">
-                <Settings className="w-5 h-5" />
-                <h3 className="text-sm font-bold uppercase tracking-wider text-white">THRESHOLD ALERT CONFIG</h3>
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="stitch-panel p-6 max-w-lg w-full shadow-2xl border-[var(--border-color)]">
+            <div className="flex justify-between items-center mb-4 pb-3 border-b border-[var(--border-color)]">
+              <div className="flex items-center space-x-2 text-[var(--accent-primary)]">
+                <Settings className="w-4 h-4" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-main)] font-mono">
+                  Telemetry Threshold Configuration
+                </h3>
               </div>
-              <button onClick={() => setConfigOpen(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setConfigOpen(false)} className="text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -78,28 +80,28 @@ export const AlertsBanner: React.FC<AlertsBannerProps> = ({ alerts, rules, onUpd
             <div className="space-y-4 font-mono text-xs">
               {/* CPU Warning / Critical */}
               <div>
-                <label className="text-slate-300 block mb-1">CPU Alert Thresholds (%)</label>
+                <label className="text-[var(--text-main)] block mb-1 text-xs font-semibold">CPU Load Thresholds (%)</label>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <span className="text-[10px] text-amber-400">Warning: {tempRules.cpuWarning}%</span>
+                  <div className="p-2 rounded bg-[var(--bg-primary)] border border-[var(--border-color)]">
+                    <span className="text-[10px] text-amber-400 block mb-1">Warning: {tempRules.cpuWarning}%</span>
                     <input
                       type="range"
                       min="50"
                       max="95"
                       value={tempRules.cpuWarning}
                       onChange={(e) => setTempRules({ ...tempRules, cpuWarning: Number(e.target.value) })}
-                      className="w-full accent-amber-400"
+                      className="w-full accent-amber-400 cursor-pointer"
                     />
                   </div>
-                  <div>
-                    <span className="text-[10px] text-rose-400">Critical: {tempRules.cpuCritical}%</span>
+                  <div className="p-2 rounded bg-[var(--bg-primary)] border border-[var(--border-color)]">
+                    <span className="text-[10px] text-rose-400 block mb-1">Critical: {tempRules.cpuCritical}%</span>
                     <input
                       type="range"
                       min="70"
                       max="99"
                       value={tempRules.cpuCritical}
                       onChange={(e) => setTempRules({ ...tempRules, cpuCritical: Number(e.target.value) })}
-                      className="w-full accent-rose-400"
+                      className="w-full accent-rose-400 cursor-pointer"
                     />
                   </div>
                 </div>
@@ -107,28 +109,28 @@ export const AlertsBanner: React.FC<AlertsBannerProps> = ({ alerts, rules, onUpd
 
               {/* RAM Warning / Critical */}
               <div>
-                <label className="text-slate-300 block mb-1">Memory Alert Thresholds (%)</label>
+                <label className="text-[var(--text-main)] block mb-1 text-xs font-semibold">Memory Load Thresholds (%)</label>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <span className="text-[10px] text-amber-400">Warning: {tempRules.ramWarning}%</span>
+                  <div className="p-2 rounded bg-[var(--bg-primary)] border border-[var(--border-color)]">
+                    <span className="text-[10px] text-amber-400 block mb-1">Warning: {tempRules.ramWarning}%</span>
                     <input
                       type="range"
                       min="50"
                       max="95"
                       value={tempRules.ramWarning}
                       onChange={(e) => setTempRules({ ...tempRules, ramWarning: Number(e.target.value) })}
-                      className="w-full accent-amber-400"
+                      className="w-full accent-amber-400 cursor-pointer"
                     />
                   </div>
-                  <div>
-                    <span className="text-[10px] text-rose-400">Critical: {tempRules.ramCritical}%</span>
+                  <div className="p-2 rounded bg-[var(--bg-primary)] border border-[var(--border-color)]">
+                    <span className="text-[10px] text-rose-400 block mb-1">Critical: {tempRules.ramCritical}%</span>
                     <input
                       type="range"
                       min="70"
                       max="99"
                       value={tempRules.ramCritical}
                       onChange={(e) => setTempRules({ ...tempRules, ramCritical: Number(e.target.value) })}
-                      className="w-full accent-rose-400"
+                      className="w-full accent-rose-400 cursor-pointer"
                     />
                   </div>
                 </div>
@@ -136,44 +138,44 @@ export const AlertsBanner: React.FC<AlertsBannerProps> = ({ alerts, rules, onUpd
 
               {/* Disk Warning / Critical */}
               <div>
-                <label className="text-slate-300 block mb-1">Disk Alert Thresholds (%)</label>
+                <label className="text-[var(--text-main)] block mb-1 text-xs font-semibold">Storage Volume Thresholds (%)</label>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <span className="text-[10px] text-amber-400">Warning: {tempRules.diskWarning}%</span>
+                  <div className="p-2 rounded bg-[var(--bg-primary)] border border-[var(--border-color)]">
+                    <span className="text-[10px] text-amber-400 block mb-1">Warning: {tempRules.diskWarning}%</span>
                     <input
                       type="range"
                       min="50"
                       max="95"
                       value={tempRules.diskWarning}
                       onChange={(e) => setTempRules({ ...tempRules, diskWarning: Number(e.target.value) })}
-                      className="w-full accent-amber-400"
+                      className="w-full accent-amber-400 cursor-pointer"
                     />
                   </div>
-                  <div>
-                    <span className="text-[10px] text-rose-400">Critical: {tempRules.diskCritical}%</span>
+                  <div className="p-2 rounded bg-[var(--bg-primary)] border border-[var(--border-color)]">
+                    <span className="text-[10px] text-rose-400 block mb-1">Critical: {tempRules.diskCritical}%</span>
                     <input
                       type="range"
                       min="70"
                       max="99"
                       value={tempRules.diskCritical}
                       onChange={(e) => setTempRules({ ...tempRules, diskCritical: Number(e.target.value) })}
-                      className="w-full accent-rose-400"
+                      className="w-full accent-rose-400 cursor-pointer"
                     />
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end space-x-2 mt-6 pt-3 border-t border-slate-800 font-mono text-xs">
+            <div className="flex justify-end space-x-2 mt-6 pt-3 border-t border-[var(--border-color)] font-mono text-xs">
               <button
                 onClick={() => setConfigOpen(false)}
-                className="px-4 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300"
+                className="px-3.5 py-1.5 rounded-lg bg-[var(--bg-primary)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-muted)] border border-[var(--border-color)] transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
-                className="px-4 py-1.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white font-bold"
+                className="px-4 py-1.5 rounded-lg bg-[var(--accent-primary-muted)] hover:bg-[var(--accent-primary)] hover:text-black text-[var(--accent-primary)] font-semibold border border-[var(--border-focus)] transition-all active:translate-y-[1px]"
               >
                 Save Thresholds
               </button>
@@ -190,9 +192,9 @@ export const AlertsBanner: React.FC<AlertsBannerProps> = ({ alerts, rules, onUpd
             setConfigOpen(true);
             sound.playClick();
           }}
-          className="flex items-center space-x-1 px-3 py-1 rounded bg-slate-900/80 hover:bg-slate-800 border border-slate-700 text-xs font-mono text-slate-300 hover:text-cyan-400 transition-colors"
+          className="flex items-center space-x-1.5 px-3 py-1 rounded-md bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-color)] text-xs font-mono text-[var(--text-sub)] hover:text-[var(--text-main)] transition-colors"
         >
-          <Settings className="w-3.5 h-3.5" />
+          <Settings className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
           <span>Configure Alerts</span>
         </button>
       </div>

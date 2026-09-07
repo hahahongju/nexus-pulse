@@ -253,33 +253,39 @@ export const App: React.FC = () => {
         {/* Hero Cards (Always visible on top) */}
         <HeroCards metrics={metrics} history={history} />
 
-        {/* Navigation Tabs */}
-        <div className="flex items-center space-x-2 border-b border-slate-800 pb-3 mb-6 overflow-x-auto">
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.key;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => {
-                  setActiveTab(tab.key);
-                  sound.playTabSwitch();
-                }}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-mono text-xs font-semibold whitespace-nowrap transition-all ${
-                  isActive
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_15px_rgba(0,240,255,0.25)]'
-                    : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 border border-transparent'
-                }`}
-              >
-                {tab.icon}
-                <span>{tab.label}</span>
-                {tab.badge !== undefined && tab.badge > 0 && (
-                  <span className="ml-1 px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] text-slate-300">
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+        {/* Navigation Tabs Segmented Dock */}
+        <div className="p-1 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl mb-6 overflow-x-auto shadow-sm">
+          <div className="flex items-center space-x-1 min-w-max">
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => {
+                    setActiveTab(tab.key);
+                    sound.playTabSwitch();
+                  }}
+                  className={`flex items-center space-x-2 px-3.5 py-2 rounded-lg font-mono text-xs font-semibold whitespace-nowrap transition-all ${
+                    isActive
+                      ? 'bg-[var(--bg-primary)] text-[var(--accent-primary)] border border-[var(--border-focus)] shadow-sm'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-white/[0.04] border border-transparent'
+                  }`}
+                >
+                  {tab.icon}
+                  <span>{tab.label}</span>
+                  {tab.badge !== undefined && tab.badge > 0 && (
+                    <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold ${
+                      isActive 
+                        ? 'bg-[var(--accent-primary-muted)] text-[var(--accent-primary)]' 
+                        : 'bg-zinc-800 text-zinc-400'
+                    }`}>
+                      {tab.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Tab Content Panels */}
@@ -359,15 +365,17 @@ export const App: React.FC = () => {
       </main>
 
       {/* Footer */}
-      <footer className="bg-[#080c14] border-t border-slate-900 py-3 px-6 text-center text-xs font-mono text-slate-500 flex flex-wrap items-center justify-between gap-2">
+      <footer className="bg-[var(--bg-primary)] border-t border-[var(--border-color)] py-3 px-6 text-xs font-mono text-[var(--text-muted)] flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center space-x-2">
           <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
-          <span>NexusPulse Telemetry OS v1.0.0</span>
+          <span className="text-[var(--text-sub)]">NexusPulse OS v1.0.0</span>
           <span>•</span>
           <span>Node {overview?.nodeVersion || 'v22'}</span>
+          <span>•</span>
+          <span className="text-[var(--accent-primary)]">Stitch Design System</span>
         </div>
         <div>
-          Autonomous Real-Time Observability Stack
+          Autonomous Real-Time Observability Engine
         </div>
       </footer>
 

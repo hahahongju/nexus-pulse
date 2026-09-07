@@ -56,9 +56,9 @@ export const SystemLogsTerminal: React.FC<SystemLogsTerminalProps> = ({ logs }) 
   };
 
   return (
-    <div className="cyber-card p-5 flex flex-col h-[520px]">
+    <div className="stitch-panel p-5 flex flex-col h-[520px]">
       {/* Header Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-800">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3 pb-3 border-b border-[var(--border-color)]">
         <div className="flex items-center space-x-2">
           <div className="p-1.5 rounded-md bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
             <Terminal className="w-5 h-5" />

@@ -54,8 +54,8 @@ export const BenchmarkSuite: React.FC<BenchmarkSuiteProps> = ({ benchmarkActive 
   };
 
   return (
-    <div className="cyber-card p-5">
-      <div className="flex flex-wrap justify-between items-center gap-2 mb-4 pb-3 border-b border-slate-800">
+    <div className="stitch-panel p-5">
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-4 pb-3 border-b border-[var(--border-color)]">
         <div className="flex items-center space-x-2">
           <div className="p-1.5 rounded-md bg-purple-500/10 border border-purple-500/30 text-purple-400">
             <Flame className="w-5 h-5" />

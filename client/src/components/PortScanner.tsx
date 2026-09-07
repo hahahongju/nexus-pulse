@@ -25,8 +25,8 @@ export const PortScanner: React.FC = () => {
   }, []);
 
   return (
-    <div className="cyber-card p-5">
-      <div className="flex flex-wrap justify-between items-center gap-2 mb-4 pb-3 border-b border-slate-800">
+    <div className="stitch-panel p-5">
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-4 pb-3 border-b border-[var(--border-color)]">
         <div className="flex items-center space-x-2">
           <div className="p-1.5 rounded-md bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
             <Radio className="w-5 h-5" />

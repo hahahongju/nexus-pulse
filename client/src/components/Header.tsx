@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Activity, 
   Server, 
@@ -9,11 +9,11 @@ import {
   Zap, 
   Palette, 
   RefreshCw,
-  Layers
+  Check,
+  Radio
 } from 'lucide-react';
 import { SystemOverview, ThemeMode } from '../types/telemetry';
 import { sound } from '../services/sound';
-import { wsClient } from '../services/websocket';
 import { Tooltip } from './Tooltip';
 
 interface HeaderProps {
@@ -40,6 +40,17 @@ export const Header: React.FC<HeaderProps> = ({
   onPollIntervalChange,
 }) => {
   const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setThemeDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const formatUptime = (seconds: number) => {
     const d = Math.floor(seconds / (3600 * 24));
@@ -50,74 +61,74 @@ export const Header: React.FC<HeaderProps> = ({
     return `${h}h ${m}m ${s}s`;
   };
 
-  const themes: { id: ThemeMode; name: string; color: string; icon: string }[] = [
-    { id: 'cyber', name: 'Cyber Neon', color: '#00f0ff', icon: '⚡' },
-    { id: 'matrix', name: 'Matrix Green', color: '#10b981', icon: '🟢' },
-    { id: 'synthwave', name: 'Synthwave', color: '#ec4899', icon: '🌸' },
-    { id: 'solar', name: 'Solar Flare', color: '#f59e0b', icon: '🔥' },
+  const themes: { id: ThemeMode; name: string; accentColor: string; label: string }[] = [
+    { id: 'cyber', name: 'Cyber Obsidian', accentColor: '#06b6d4', label: 'Cyan / Deep Obsidian' },
+    { id: 'matrix', name: 'Tactical Emerald', accentColor: '#10b981', label: 'Emerald / Night Forest' },
+    { id: 'synthwave', name: 'Twilight Magenta', accentColor: '#ec4899', label: 'Rose / Midnight Violet' },
+    { id: 'solar', name: 'Solar Horizon', accentColor: '#f59e0b', label: 'Amber / Warm Espresso' },
   ];
 
   return (
-    <header className="sticky top-0 z-40 bg-[#080c14]/90 backdrop-blur-md border-b border-cyan-500/20 px-4 py-3 shadow-lg">
+    <header className="sticky top-0 z-40 bg-[var(--bg-primary)]/90 backdrop-blur-xl border-b border-[var(--border-color)] px-4 sm:px-6 py-3 transition-colors">
       <div className="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-4">
         
-        {/* Brand & Hostname */}
-        <div className="flex items-center space-x-3">
-          <div className="relative flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/40 shadow-inner">
-            <Zap className="w-6 h-6 text-cyan-400 animate-pulse" />
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#080c14] animate-ping" />
+        {/* Brand & Host Identity */}
+        <div className="flex items-center space-x-3.5">
+          <div className="relative flex items-center justify-center w-9 h-9 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-color)] shadow-sm">
+            <Zap className="w-5 h-5 text-[var(--accent-primary)] transition-transform duration-300 group-hover:scale-110" />
+            <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400 ring-2 ring-[var(--bg-primary)] animate-pulse' : 'bg-rose-500'}`} />
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <h1 className="text-lg font-extrabold tracking-wider bg-gradient-to-r from-cyan-400 via-teal-300 to-purple-400 bg-clip-text text-transparent uppercase">
+              <h1 className="text-base font-bold tracking-tight text-[var(--text-main)] uppercase font-mono">
                 NexusPulse
               </h1>
-              <span className="px-1.5 py-0.5 text-[10px] font-mono tracking-wide rounded bg-cyan-950/80 text-cyan-400 border border-cyan-800">
-                OS TELEMETRY
+              <span className="px-1.5 py-0.5 text-[9px] font-mono tracking-wider font-semibold rounded bg-[var(--accent-primary-muted)] text-[var(--accent-primary)] border border-[var(--border-color)]">
+                STITCH TELEMETRY
               </span>
             </div>
-            <div className="flex items-center space-x-2 text-xs text-slate-400 font-mono">
-              <Server className="w-3 h-3 text-cyan-400" />
-              <span className="text-slate-200 font-semibold">{overview?.hostname || 'Connecting...'}</span>
+            <div className="flex items-center space-x-2 text-xs text-[var(--text-muted)] font-mono mt-0.5">
+              <Server className="w-3 h-3 text-[var(--accent-primary)]" />
+              <span className="text-[var(--text-main)] font-medium">{overview?.hostname || 'Connecting...'}</span>
               <span>•</span>
-              <span className="text-slate-400">{overview?.type} {overview?.arch}</span>
+              <span>{overview?.type} ({overview?.arch})</span>
             </div>
           </div>
         </div>
 
-        {/* Live Status Indicators */}
+        {/* Action & Metric Controls */}
         <div className="flex items-center flex-wrap gap-2 text-xs font-mono">
           
-          {/* WS Status */}
-          <div className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full border ${
+          {/* Live Status Pill */}
+          <div className={`flex items-center space-x-1.5 px-3 py-1 rounded-full border text-[11px] font-semibold transition-all ${
             isConnected 
-              ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-400' 
-              : 'bg-rose-950/40 border-rose-500/40 text-rose-400'
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+              : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
           }`}>
-            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
-            <span>{isConnected ? 'LIVE STREAM' : 'DISCONNECTED'}</span>
+            <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-emerald-400 animate-ping' : 'bg-rose-500'}`} />
+            <span className="tracking-wide">{isConnected ? 'LIVE 1Hz' : 'DISCONNECTED'}</span>
           </div>
 
-          {/* Uptime */}
-          <div className="flex items-center space-x-1 px-2.5 py-1 rounded-md bg-slate-900/80 border border-slate-700/60 text-slate-300">
-            <Clock className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="text-slate-400">UP:</span>
-            <span className="font-semibold text-cyan-300">{formatUptime(uptimeSec)}</span>
+          {/* Uptime Chip */}
+          <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-[var(--bg-surface)] border border-[var(--border-color)] text-[var(--text-main)]">
+            <Clock className="w-3 h-3 text-[var(--text-muted)]" />
+            <span className="text-[var(--text-muted)] text-[10px] uppercase">UPTIME</span>
+            <span className="font-semibold text-[var(--accent-primary)] tabular-nums">{formatUptime(uptimeSec)}</span>
           </div>
 
-          {/* CPU Spec Badge */}
+          {/* Hardware CPU Spec */}
           {overview?.cpu && (
-            <div className="hidden lg:flex items-center space-x-1 px-2.5 py-1 rounded-md bg-slate-900/80 border border-slate-700/60 text-slate-300">
-              <Cpu className="w-3.5 h-3.5 text-purple-400" />
-              <span className="truncate max-w-[180px]">{overview.cpu.brand}</span>
-              <span className="text-purple-300">({overview.cpu.cores}C)</span>
+            <div className="hidden lg:flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-[var(--bg-surface)] border border-[var(--border-color)] text-[var(--text-main)]">
+              <Cpu className="w-3 h-3 text-[var(--text-muted)]" />
+              <span className="truncate max-w-[190px] text-[var(--text-sub)]">{overview.cpu.brand}</span>
+              <span className="text-[var(--accent-primary)] font-semibold">[{overview.cpu.cores}C]</span>
             </div>
           )}
 
           {/* Polling Interval Selector */}
           <Tooltip content="실시간 텔레메트리 갱신 주기">
-            <div className="flex items-center space-x-1 px-2 py-1 rounded-md bg-slate-900/80 border border-slate-700/60 text-slate-300">
-              <RefreshCw className="w-3 h-3 text-cyan-400" />
+            <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-[var(--bg-surface)] border border-[var(--border-color)] text-[var(--text-sub)]">
+              <RefreshCw className="w-3 h-3 text-[var(--accent-primary)]" />
               <select
                 value={pollInterval}
                 onChange={(e) => {
@@ -125,27 +136,29 @@ export const Header: React.FC<HeaderProps> = ({
                   onPollIntervalChange(val);
                   sound.playClick();
                 }}
-                className="bg-transparent text-xs text-cyan-300 outline-none cursor-pointer"
+                aria-label="텔레메트리 갱신 주기 선택"
+                className="bg-transparent text-xs text-[var(--text-main)] outline-none cursor-pointer font-medium"
               >
-                <option value={500} className="bg-slate-900 text-slate-200">500ms (Hyper)</option>
-                <option value={1000} className="bg-slate-900 text-slate-200">1.0s (Normal)</option>
-                <option value={2000} className="bg-slate-900 text-slate-200">2.0s (Smooth)</option>
-                <option value={5000} className="bg-slate-900 text-slate-200">5.0s (Eco)</option>
+                <option value={500} className="bg-zinc-900 text-zinc-100">500ms (Fast)</option>
+                <option value={1000} className="bg-zinc-900 text-zinc-100">1.0s (Normal)</option>
+                <option value={2000} className="bg-zinc-900 text-zinc-100">2.0s (Smooth)</option>
+                <option value={5000} className="bg-zinc-900 text-zinc-100">5.0s (Eco)</option>
               </select>
             </div>
           </Tooltip>
 
-          {/* Sound Toggle */}
-          <Tooltip content={soundEnabled ? "신디사이저 효과음 끄기 (Mute)" : "신디사이저 효과음 켜기 (Enable Audio)"}>
+          {/* Sound Synthesizer Audio Toggle */}
+          <Tooltip content={soundEnabled ? "신디사이저 오디오 끄기 (Mute)" : "신디사이저 오디오 켜기 (Enable Audio)"}>
             <button
               onClick={() => {
                 onToggleSound();
                 sound.playClick();
               }}
+              aria-label={soundEnabled ? "신디사이저 오디오 끄기" : "신디사이저 오디오 켜기"}
               className={`p-1.5 rounded-md border transition-all ${
                 soundEnabled
-                  ? 'bg-cyan-950/40 border-cyan-500/40 text-cyan-400 hover:bg-cyan-900/60'
-                  : 'bg-slate-900/80 border-slate-700 text-slate-500 hover:text-slate-300'
+                  ? 'bg-[var(--accent-primary-muted)] border-[var(--border-focus)] text-[var(--accent-primary)]'
+                  : 'bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
               }`}
             >
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
@@ -153,22 +166,25 @@ export const Header: React.FC<HeaderProps> = ({
           </Tooltip>
 
           {/* Theme Selector Dropdown */}
-          <div className="relative">
-            <Tooltip content="사이버 관제 대시보드 테마 변경">
+          <div className="relative" ref={dropdownRef}>
+            <Tooltip content="대시보드 테마 변경">
               <button
                 onClick={() => {
                   setThemeDropdownOpen(!themeDropdownOpen);
                   sound.playClick();
                 }}
-                className="flex items-center space-x-1 px-2.5 py-1 rounded-md bg-slate-900/80 border border-slate-700/60 text-slate-300 hover:border-cyan-500/40 transition-colors"
+                className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-[var(--bg-surface)] border border-[var(--border-color)] text-[var(--text-sub)] hover:border-[var(--border-hover)] transition-colors"
               >
-                <Palette className="w-3.5 h-3.5 text-cyan-400" />
-                <span className="capitalize">{theme}</span>
+                <Palette className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+                <span className="capitalize font-medium">{theme}</span>
               </button>
             </Tooltip>
 
             {themeDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-40 rounded-lg bg-slate-900/95 border border-cyan-500/30 backdrop-blur-xl shadow-2xl py-1 z-50">
+              <div className="absolute right-0 mt-2 w-48 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] backdrop-blur-2xl shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                <div className="px-3 py-1 text-[10px] uppercase font-bold text-[var(--text-muted)] tracking-wider border-b border-[var(--border-color)] mb-1">
+                  Color Themes
+                </div>
                 {themes.map((t) => (
                   <button
                     key={t.id}
@@ -177,12 +193,17 @@ export const Header: React.FC<HeaderProps> = ({
                       setThemeDropdownOpen(false);
                       sound.playTabSwitch();
                     }}
-                    className={`w-full flex items-center space-x-2 px-3 py-1.5 text-xs text-left hover:bg-cyan-500/10 transition-colors ${
-                      theme === t.id ? 'text-cyan-400 font-bold bg-cyan-950/30' : 'text-slate-300'
+                    className={`w-full flex items-center justify-between px-3 py-1.5 text-xs text-left transition-colors ${
+                      theme === t.id 
+                        ? 'bg-[var(--accent-primary-muted)] text-[var(--accent-primary)] font-semibold' 
+                        : 'text-[var(--text-sub)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-main)]'
                     }`}
                   >
-                    <span>{t.icon}</span>
-                    <span>{t.name}</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.accentColor }} />
+                      <span>{t.name}</span>
+                    </div>
+                    {theme === t.id && <Check className="w-3.5 h-3.5 text-[var(--accent-primary)]" />}
                   </button>
                 ))}
               </div>

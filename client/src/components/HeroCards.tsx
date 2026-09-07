@@ -1,5 +1,5 @@
 import React from 'react';
-import { Cpu, HardDrive, Network, Zap, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Cpu, HardDrive, Network, Layers, ArrowDown, ArrowUp, Activity } from 'lucide-react';
 import { SystemMetrics, HistoryPoint } from '../types/telemetry';
 import { formatSpeed } from '../utils/formatters';
 
@@ -13,10 +13,10 @@ export const HeroCards: React.FC<HeroCardsProps> = ({ metrics, history }) => {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[1, 2, 3, 4].map((n) => (
-          <div key={n} className="cyber-card p-5 animate-pulse flex flex-col justify-between h-36">
-            <div className="h-4 bg-slate-800 rounded w-1/3"></div>
-            <div className="h-8 bg-slate-800 rounded w-1/2"></div>
-            <div className="h-3 bg-slate-800 rounded w-full"></div>
+          <div key={n} className="stitch-panel p-5 animate-pulse flex flex-col justify-between h-36">
+            <div className="h-4 bg-zinc-800/60 rounded w-1/3"></div>
+            <div className="h-8 bg-zinc-800/60 rounded w-1/2"></div>
+            <div className="h-2 bg-zinc-800/60 rounded w-full"></div>
           </div>
         ))}
       </div>
@@ -30,28 +30,52 @@ export const HeroCards: React.FC<HeroCardsProps> = ({ metrics, history }) => {
   const netRxKb = Math.round((metrics.network.io.rx_sec / 1024) * 10) / 10;
   const netTxKb = Math.round((metrics.network.io.tx_sec / 1024) * 10) / 10;
 
-  // Mini sparkline SVG generator
-  const renderSparkline = (dataPoints: number[], color: string, height = 32) => {
+  // Stitch High-Precision Micro Sparkline
+  const renderSparkline = (dataPoints: number[], color: string, id: string, height = 34) => {
     if (dataPoints.length < 2) return null;
-    const width = 120;
-    const max = Math.max(...dataPoints, 100);
-    const min = 0;
-    const pts = dataPoints.map((val, idx) => {
+    const width = 110;
+    const maxVal = Math.max(...dataPoints, 10);
+    const minVal = Math.min(...dataPoints, 0);
+    const range = maxVal - minVal || 1;
+
+    const coords = dataPoints.map((val, idx) => {
       const x = (idx / (dataPoints.length - 1)) * width;
-      const y = height - ((val - min) / (max - min || 1)) * (height - 4) - 2;
-      return `${x},${y}`;
-    }).join(' ');
+      const y = height - ((val - minVal) / range) * (height - 6) - 3;
+      return { x, y };
+    });
+
+    const ptsString = coords.map((c) => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
+    const lastCoord = coords[coords.length - 1];
 
     return (
-      <svg width={width} height={height} className="overflow-visible">
+      <svg width={width} height={height} className="overflow-visible" aria-hidden="true">
         <defs>
-          <linearGradient id={`grad-${color}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.5" />
+          <linearGradient id={`grad-${id}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.28" />
             <stop offset="100%" stopColor={color} stopOpacity="0.0" />
           </linearGradient>
         </defs>
-        <polygon points={`0,${height} ${pts} ${width},${height}`} fill={`url(#grad-${color})`} />
-        <polyline fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" points={pts} />
+        <polygon 
+          points={`0,${height} ${ptsString} ${width},${height}`} 
+          fill={`url(#grad-${id})`} 
+        />
+        <polyline 
+          fill="none" 
+          stroke={color} 
+          strokeWidth="1.75" 
+          strokeLinecap="round" 
+          strokeLinejoin="round" 
+          points={ptsString} 
+        />
+        {lastCoord && (
+          <circle 
+            cx={lastCoord.x} 
+            cy={lastCoord.y} 
+            r="2.5" 
+            fill={color} 
+            className="animate-pulse"
+          />
+        )}
       </svg>
     );
   };
@@ -64,193 +88,211 @@ export const HeroCards: React.FC<HeroCardsProps> = ({ metrics, history }) => {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       
-      {/* 1. CPU HERO CARD */}
-      <div className={`cyber-card p-4 relative overflow-hidden group ${
-        cpu > 85 ? 'border-rose-500/60 shadow-[0_0_20px_rgba(244,63,94,0.3)]' : ''
+      {/* 1. CPU LOAD PANEL */}
+      <div className={`stitch-panel p-4 relative overflow-hidden group transition-all ${
+        cpu > 85 ? 'border-rose-500/50' : cpu > 65 ? 'border-amber-500/40' : ''
       }`}>
         <div className="flex justify-between items-start">
-          <div className="flex items-center space-x-2">
-            <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
-              <Cpu className="w-5 h-5" />
+          <div className="flex items-center space-x-2.5">
+            <div className={`p-2 rounded-lg border transition-colors ${
+              cpu > 85 
+                ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' 
+                : 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400'
+            }`}>
+              <Cpu className="w-4 h-4" />
             </div>
             <div>
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">CPU UTILIZATION</span>
-              <div className="text-xs text-slate-500 font-mono">Load: {metrics.loadavg.join(', ')}</div>
+              <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider block">
+                CPU Compute Load
+              </span>
+              <div className="text-[10px] text-[var(--text-sub)] font-mono">
+                LoadAvg: {metrics.loadavg.slice(0, 3).join(' / ')}
+              </div>
             </div>
           </div>
-          <span className={`px-2 py-0.5 text-xs font-mono font-bold rounded ${
-            cpu > 85 ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40' : 
-            cpu > 60 ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' : 
-            'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30'
-          }`}>
-            {metrics.cpu.cores.length} CORES
+          <span className="px-2 py-0.5 text-[10px] font-mono font-semibold rounded bg-zinc-800/80 text-zinc-300 border border-zinc-700/60">
+            {metrics.cpu.cores.length}C
           </span>
         </div>
 
         <div className="mt-4 flex items-end justify-between">
           <div>
-            <div className="text-3xl font-extrabold font-mono tracking-tight text-white flex items-baseline space-x-1">
-              <span className={cpu > 85 ? 'text-rose-400' : cpu > 60 ? 'text-amber-400' : 'text-cyan-400'}>
+            <div className="text-3xl font-bold font-mono tracking-tight text-[var(--text-main)] flex items-baseline space-x-1 tabular-nums">
+              <span className={cpu > 85 ? 'text-rose-400' : cpu > 65 ? 'text-amber-400' : 'text-cyan-400'}>
                 {cpu.toFixed(1)}
               </span>
-              <span className="text-sm font-normal text-slate-400">%</span>
+              <span className="text-xs font-normal text-[var(--text-muted)]">%</span>
             </div>
-            <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-              1m Load Avg: <span className="text-slate-200 font-semibold">{metrics.loadavg[0]}</span>
+            <div className="text-[10px] text-[var(--text-sub)] font-mono mt-0.5">
+              1m: <span className="text-[var(--text-main)] font-semibold">{metrics.loadavg[0]}</span> | 5m: {metrics.loadavg[1]}
             </div>
           </div>
-          <div className="opacity-80 group-hover:opacity-100 transition-opacity">
-            {renderSparkline(recentCpu, cpu > 85 ? '#f43f5e' : '#00f0ff')}
+          <div className="opacity-90 group-hover:opacity-100 transition-opacity">
+            {renderSparkline(recentCpu, cpu > 85 ? '#f43f5e' : '#06b6d4', 'cpu')}
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+        {/* Linear Gauge */}
+        <div className="w-full bg-zinc-800/70 h-1 rounded-full mt-3 overflow-hidden">
           <div 
-            className={`h-full transition-all duration-500 rounded-full ${
-              cpu > 85 ? 'bg-rose-500' : cpu > 60 ? 'bg-amber-400' : 'bg-gradient-to-r from-cyan-500 to-teal-400'
+            className={`h-full transition-all duration-300 rounded-full ${
+              cpu > 85 ? 'bg-rose-500' : cpu > 65 ? 'bg-amber-400' : 'bg-cyan-500'
             }`}
             style={{ width: `${Math.min(100, Math.max(2, cpu))}%` }}
           />
         </div>
       </div>
 
-      {/* 2. RAM HERO CARD */}
-      <div className={`cyber-card p-4 relative overflow-hidden group ${
-        ram > 90 ? 'border-rose-500/60 shadow-[0_0_20px_rgba(244,63,94,0.3)]' : ''
+      {/* 2. RAM ALLOCATION PANEL */}
+      <div className={`stitch-panel p-4 relative overflow-hidden group transition-all ${
+        ram > 90 ? 'border-rose-500/50' : ram > 75 ? 'border-amber-500/40' : ''
       }`}>
         <div className="flex justify-between items-start">
-          <div className="flex items-center space-x-2">
-            <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-400">
-              <Zap className="w-5 h-5" />
+          <div className="flex items-center space-x-2.5">
+            <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+              <Layers className="w-4 h-4" />
             </div>
             <div>
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">MEMORY (RAM)</span>
-              <div className="text-xs text-slate-500 font-mono">
-                Swap: {metrics.memory.swapPercent}%
+              <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider block">
+                Memory Workspace
+              </span>
+              <div className="text-[10px] text-[var(--text-sub)] font-mono">
+                Swap: {metrics.memory.swapPercent.toFixed(1)}%
               </div>
             </div>
           </div>
-          <span className="px-2 py-0.5 text-xs font-mono font-bold rounded bg-purple-500/10 text-purple-400 border border-purple-500/30">
-            {(metrics.memory.total / (1024 ** 3)).toFixed(1)} GB TOTAL
+          <span className="px-2 py-0.5 text-[10px] font-mono font-semibold rounded bg-zinc-800/80 text-zinc-300 border border-zinc-700/60">
+            {(metrics.memory.total / (1024 ** 3)).toFixed(1)} GB
           </span>
         </div>
 
         <div className="mt-4 flex items-end justify-between">
           <div>
-            <div className="text-3xl font-extrabold font-mono tracking-tight text-white flex items-baseline space-x-1">
-              <span className={ram > 90 ? 'text-rose-400' : ram > 75 ? 'text-amber-400' : 'text-purple-400'}>
+            <div className="text-3xl font-bold font-mono tracking-tight text-[var(--text-main)] flex items-baseline space-x-1 tabular-nums">
+              <span className={ram > 90 ? 'text-rose-400' : ram > 75 ? 'text-amber-400' : 'text-indigo-400'}>
                 {ram.toFixed(1)}
               </span>
-              <span className="text-sm font-normal text-slate-400">%</span>
+              <span className="text-xs font-normal text-[var(--text-muted)]">%</span>
             </div>
-            <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-              Used: <span className="text-slate-200">{(metrics.memory.used / (1024 ** 3)).toFixed(2)} GB</span> / Avail: {(metrics.memory.available / (1024 ** 3)).toFixed(2)} GB
+            <div className="text-[10px] text-[var(--text-sub)] font-mono mt-0.5">
+              Used: <span className="text-[var(--text-main)] font-semibold">{(metrics.memory.used / (1024 ** 3)).toFixed(1)}G</span> / Avail: {(metrics.memory.available / (1024 ** 3)).toFixed(1)}G
             </div>
           </div>
-          <div className="opacity-80 group-hover:opacity-100 transition-opacity">
-            {renderSparkline(recentRam, '#a855f7')}
+          <div className="opacity-90 group-hover:opacity-100 transition-opacity">
+            {renderSparkline(recentRam, ram > 90 ? '#f43f5e' : '#818cf8', 'ram')}
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+        {/* Linear Gauge */}
+        <div className="w-full bg-zinc-800/70 h-1 rounded-full mt-3 overflow-hidden">
           <div 
-            className={`h-full transition-all duration-500 rounded-full ${
-              ram > 90 ? 'bg-rose-500' : ram > 75 ? 'bg-amber-400' : 'bg-gradient-to-r from-purple-500 to-pink-500'
+            className={`h-full transition-all duration-300 rounded-full ${
+              ram > 90 ? 'bg-rose-500' : ram > 75 ? 'bg-amber-400' : 'bg-indigo-500'
             }`}
             style={{ width: `${Math.min(100, Math.max(2, ram))}%` }}
           />
         </div>
       </div>
 
-      {/* 3. DISK STORAGE CARD */}
-      <div className="cyber-card p-4 relative overflow-hidden group">
+      {/* 3. STORAGE I/O PANEL */}
+      <div className={`stitch-panel p-4 relative overflow-hidden group transition-all ${
+        diskPercent > 90 ? 'border-rose-500/50' : ''
+      }`}>
         <div className="flex justify-between items-start">
-          <div className="flex items-center space-x-2">
-            <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-              <HardDrive className="w-5 h-5" />
+          <div className="flex items-center space-x-2.5">
+            <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+              <HardDrive className="w-4 h-4" />
             </div>
             <div>
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">ROOT STORAGE</span>
-              <div className="text-xs text-slate-500 font-mono">
+              <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider block">
+                Root Filesystem
+              </span>
+              <div className="text-[10px] text-[var(--text-sub)] font-mono">
                 Mount: {rootDisk ? rootDisk.mount : '/'}
               </div>
             </div>
           </div>
-          <span className="px-2 py-0.5 text-xs font-mono font-bold rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+          <span className="px-2 py-0.5 text-[10px] font-mono font-semibold rounded bg-zinc-800/80 text-zinc-300 border border-zinc-700/60">
             {rootDisk ? (rootDisk.size / (1024 ** 3)).toFixed(0) : '0'} GB
           </span>
         </div>
 
         <div className="mt-4 flex items-end justify-between">
           <div>
-            <div className="text-3xl font-extrabold font-mono tracking-tight text-white flex items-baseline space-x-1">
+            <div className="text-3xl font-bold font-mono tracking-tight text-[var(--text-main)] flex items-baseline space-x-1 tabular-nums">
               <span className={diskPercent > 90 ? 'text-rose-400' : 'text-emerald-400'}>
                 {diskPercent.toFixed(1)}
               </span>
-              <span className="text-sm font-normal text-slate-400">%</span>
+              <span className="text-xs font-normal text-[var(--text-muted)]">%</span>
             </div>
-            <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-              Free: <span className="text-slate-200">{rootDisk ? (rootDisk.available / (1024 ** 3)).toFixed(1) : 0} GB</span> | I/O: <span className="text-emerald-300 font-bold">{formatSpeed(metrics.storage.io.rIO_sec + metrics.storage.io.wIO_sec)}</span>
+            <div className="text-[10px] text-[var(--text-sub)] font-mono mt-0.5">
+              Free: <span className="text-[var(--text-main)] font-semibold">{rootDisk ? (rootDisk.available / (1024 ** 3)).toFixed(1) : 0}G</span> | IOPS: <span className="text-emerald-400 font-medium">{formatSpeed(metrics.storage.io.rIO_sec + metrics.storage.io.wIO_sec)}</span>
             </div>
           </div>
-          <div className="opacity-80 group-hover:opacity-100 transition-opacity">
-            {renderSparkline(recentDisk, '#10b981')}
+          <div className="opacity-90 group-hover:opacity-100 transition-opacity">
+            {renderSparkline(recentDisk, '#10b981', 'disk')}
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+        {/* Linear Gauge */}
+        <div className="w-full bg-zinc-800/70 h-1 rounded-full mt-3 overflow-hidden">
           <div 
-            className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500 rounded-full"
+            className="h-full bg-emerald-500 transition-all duration-300 rounded-full"
             style={{ width: `${Math.min(100, Math.max(2, diskPercent))}%` }}
           />
         </div>
       </div>
 
-      {/* 4. NETWORK BANDWIDTH CARD */}
-      <div className="cyber-card p-4 relative overflow-hidden group">
+      {/* 4. NETWORK TELEMETRY PANEL */}
+      <div className="stitch-panel p-4 relative overflow-hidden group transition-all">
         <div className="flex justify-between items-start">
-          <div className="flex items-center space-x-2">
-            <div className="p-2 rounded-lg bg-pink-500/10 border border-pink-500/30 text-pink-400">
-              <Network className="w-5 h-5" />
+          <div className="flex items-center space-x-2.5">
+            <div className="p-2 rounded-lg bg-teal-500/10 border border-teal-500/20 text-teal-400">
+              <Network className="w-4 h-4" />
             </div>
             <div>
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">NETWORK I/O</span>
-              <div className="text-xs text-slate-500 font-mono">
-                {metrics.network.interfaces.length} active iface(s)
+              <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider block">
+                Network Bandwidth
+              </span>
+              <div className="text-[10px] text-[var(--text-sub)] font-mono">
+                {metrics.network.interfaces.length} iface(s) active
               </div>
             </div>
           </div>
-          <span className="px-2 py-0.5 text-xs font-mono font-bold rounded bg-pink-500/10 text-pink-400 border border-pink-500/30">
+          <span className="px-2 py-0.5 text-[10px] font-mono font-semibold rounded bg-zinc-800/80 text-zinc-300 border border-zinc-700/60">
             TOTAL RX/TX
           </span>
         </div>
 
         <div className="mt-4 flex items-end justify-between">
           <div>
-            <div className="text-2xl font-extrabold font-mono tracking-tight text-white flex items-baseline space-x-2">
-              <span className="text-cyan-400 text-lg font-bold">↓{formatSpeed(metrics.network.io.rx_sec)}</span>
-              <span className="text-pink-400 text-lg font-bold">↑{formatSpeed(metrics.network.io.tx_sec)}</span>
+            <div className="text-xl font-bold font-mono tracking-tight text-[var(--text-main)] flex items-center space-x-2 tabular-nums">
+              <span className="text-cyan-400 flex items-center text-sm font-semibold">
+                <ArrowDown className="w-3.5 h-3.5 mr-0.5" />
+                {formatSpeed(metrics.network.io.rx_sec)}
+              </span>
+              <span className="text-emerald-400 flex items-center text-sm font-semibold">
+                <ArrowUp className="w-3.5 h-3.5 mr-0.5" />
+                {formatSpeed(metrics.network.io.tx_sec)}
+              </span>
             </div>
-            <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-              Accumulated: {(metrics.network.io.total_rx / (1024 ** 2)).toFixed(1)}MB Rx / {(metrics.network.io.total_tx / (1024 ** 2)).toFixed(1)}MB Tx
+            <div className="text-[10px] text-[var(--text-sub)] font-mono mt-1">
+              Acc: {(metrics.network.io.total_rx / (1024 ** 2)).toFixed(0)}M Rx • {(metrics.network.io.total_tx / (1024 ** 2)).toFixed(0)}M Tx
             </div>
           </div>
-          <div className="opacity-80 group-hover:opacity-100 transition-opacity">
-            {renderSparkline(recentNet, '#ec4899')}
+          <div className="opacity-90 group-hover:opacity-100 transition-opacity">
+            {renderSparkline(recentNet, '#14b8a6', 'net')}
           </div>
         </div>
 
-        {/* Progress Bar (normalized) */}
-        <div className="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden flex">
+        {/* Dual Bandwidth Gauge */}
+        <div className="w-full bg-zinc-800/70 h-1 rounded-full mt-3 overflow-hidden flex">
           <div 
             className="h-full bg-cyan-400 transition-all duration-300"
             style={{ width: `${Math.min(50, (netRxKb / 500) * 50)}%` }}
           />
           <div 
-            className="h-full bg-pink-500 transition-all duration-300"
+            className="h-full bg-emerald-400 transition-all duration-300"
             style={{ width: `${Math.min(50, (netTxKb / 500) * 50)}%` }}
           />
         </div>

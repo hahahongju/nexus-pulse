@@ -35,7 +35,7 @@ export const VirtualizationView: React.FC<VirtualizationViewProps> = ({ virt, on
 
   if (!virt) {
     return (
-      <div className="cyber-card p-8 text-center text-slate-500 font-mono text-xs animate-pulse">
+      <div className="stitch-panel p-8 text-center text-slate-500 font-mono text-xs animate-pulse">
         Scanning hardware virtualization layers and hypervisor topology...
       </div>
     );
@@ -78,7 +78,7 @@ export const VirtualizationView: React.FC<VirtualizationViewProps> = ({ virt, on
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         
         {/* Host Role Card */}
-        <div className={`cyber-card p-5 border-l-4 ${
+        <div className={`stitch-panel p-5 border-l-4 ${
           isBareMetal ? 'border-l-emerald-500' : 'border-l-cyan-500'
         }`}>
           <div className="flex justify-between items-start">
@@ -98,7 +98,7 @@ export const VirtualizationView: React.FC<VirtualizationViewProps> = ({ virt, on
         </div>
 
         {/* Hardware Virt Support (AMD-V / VT-x) */}
-        <div className="cyber-card p-5 border-l-4 border-l-purple-500">
+        <div className="stitch-panel p-5 border-l-4 border-l-purple-500">
           <div className="flex justify-between items-start">
             <div>
               <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">HARDWARE VIRTUALIZATION (CPU)</span>
@@ -121,7 +121,7 @@ export const VirtualizationView: React.FC<VirtualizationViewProps> = ({ virt, on
         </div>
 
         {/* Hypervisor Acceleration */}
-        <div className="cyber-card p-5 border-l-4 border-l-cyan-500">
+        <div className="stitch-panel p-5 border-l-4 border-l-cyan-500">
           <div className="flex justify-between items-start">
             <div>
               <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">HYPERVISOR ACCELERATION</span>
@@ -140,7 +140,7 @@ export const VirtualizationView: React.FC<VirtualizationViewProps> = ({ virt, on
       </div>
 
       {/* 2. VIRTUAL MACHINES (VMs) FLEET MANAGEMENT */}
-      <div className="cyber-card p-5">
+      <div className="stitch-panel p-5">
         <div className="flex flex-wrap justify-between items-center gap-2 mb-4 pb-3 border-b border-slate-800">
           <div className="flex items-center space-x-2">
             <div className="p-1.5 rounded-md bg-purple-500/10 border border-purple-500/30 text-purple-400">
@@ -351,7 +351,7 @@ export const VirtualizationView: React.FC<VirtualizationViewProps> = ({ virt, on
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         
         {/* Detected Engines */}
-        <div className="cyber-card p-5">
+        <div className="stitch-panel p-5">
           <div className="flex items-center space-x-2 mb-4 pb-2 border-b border-slate-800">
             <Layers className="w-5 h-5 text-cyan-400" />
             <h4 className="text-sm font-bold uppercase tracking-wider text-slate-200">
@@ -385,7 +385,7 @@ export const VirtualizationView: React.FC<VirtualizationViewProps> = ({ virt, on
         </div>
 
         {/* Virtual Network Bridges */}
-        <div className="cyber-card p-5">
+        <div className="stitch-panel p-5">
           <div className="flex items-center space-x-2 mb-4 pb-2 border-b border-slate-800">
             <Network className="w-5 h-5 text-pink-400" />
             <h4 className="text-sm font-bold uppercase tracking-wider text-slate-200">
@@ -422,7 +422,7 @@ export const VirtualizationView: React.FC<VirtualizationViewProps> = ({ virt, on
       {/* Force Destroy Safety Modal */}
       {destroyModalVm && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="cyber-card p-6 max-w-md w-full border-rose-500/50 shadow-[0_0_30px_rgba(244,63,94,0.3)] animate-fade-in">
+          <div className="stitch-panel p-6 max-w-md w-full border-rose-500/50 shadow-[0_0_30px_rgba(244,63,94,0.3)] animate-fade-in">
             <div className="flex items-center space-x-3 mb-4 text-rose-400">
               <AlertTriangle className="w-6 h-6" />
               <h4 className="text-base font-bold uppercase tracking-wider text-white">FORCE POWER OFF (DESTROY)</h4>

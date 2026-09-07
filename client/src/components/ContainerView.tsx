@@ -133,7 +133,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ docker, containers
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* Card 1: Engine Status */}
-        <div className="cyber-card p-4">
+        <div className="stitch-panel p-4">
           <div className="flex justify-between items-start">
             <div className="flex items-center space-x-2">
               <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
@@ -161,7 +161,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ docker, containers
         </div>
 
         {/* Card 2: Running Containers */}
-        <div className="cyber-card p-4">
+        <div className="stitch-panel p-4">
           <div className="flex justify-between items-start">
             <div className="flex items-center space-x-2">
               <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
@@ -181,7 +181,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ docker, containers
         </div>
 
         {/* Card 3: Paused & Stopped */}
-        <div className="cyber-card p-4">
+        <div className="stitch-panel p-4">
           <div className="flex justify-between items-start">
             <div className="flex items-center space-x-2">
               <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400">
@@ -204,7 +204,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ docker, containers
         </div>
 
         {/* Card 4: Quick Actions / Deploy */}
-        <div className="cyber-card p-4 flex flex-col justify-between">
+        <div className="stitch-panel p-4 flex flex-col justify-between">
           <div className="flex justify-between items-center">
             <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">CONTAINER ACTIONS</div>
             <Tooltip content="컨테이너 상태 즉시 새로고침">
@@ -241,7 +241,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ docker, containers
       )}
 
       {/* 2. CONTAINER FLEET TABLE */}
-      <div className="cyber-card p-5">
+      <div className="stitch-panel p-5">
         
         {/* Filter & Search Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-800">
@@ -501,7 +501,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ docker, containers
       {/* 3. CONTAINER LOGS TERMINAL MODAL */}
       {selectedLogsContainer && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="cyber-card p-5 max-w-3xl w-full h-[540px] flex flex-col border-cyan-500/40 shadow-2xl">
+          <div className="stitch-panel p-5 max-w-3xl w-full h-[540px] flex flex-col border-cyan-500/40 shadow-2xl">
             
             <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-800">
               <div className="flex items-center space-x-2 text-cyan-400 font-mono text-xs">
@@ -558,7 +558,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ docker, containers
       {/* 4. CONTAINER DELETE CONFIRMATION MODAL */}
       {deleteModalContainer && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="cyber-card p-6 max-w-md w-full border-rose-500/50 shadow-[0_0_30px_rgba(244,63,94,0.3)] animate-fade-in">
+          <div className="stitch-panel p-6 max-w-md w-full border-rose-500/50 shadow-[0_0_30px_rgba(244,63,94,0.3)] animate-fade-in">
             <div className="flex items-center space-x-3 mb-4 text-rose-400">
               <AlertTriangle className="w-6 h-6" />
               <h4 className="text-base font-bold uppercase tracking-wider text-white">DELETE CONTAINER (DOCKER RM)</h4>
