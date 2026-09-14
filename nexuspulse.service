@@ -11,6 +11,12 @@ Restart=always
 RestartSec=5
 Environment=NODE_ENV=production
 Environment=PORT=4500
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=read-only
+ProtectSystem=full
+UMask=0077
+ReadWritePaths=/mnt/storage /mnt/workspace/nexus-pulse/data /home/hongju/.hermes /home/hongju/.cache
 
 [Install]
 WantedBy=multi-user.target

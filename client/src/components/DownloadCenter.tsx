@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { Download, FolderCog, Link, MessageSquareText, Play, RefreshCw, Save, Send, Square, Trash2, Video, CheckCircle2 } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Download, FolderCog, Link, MessageSquareText, Play, RefreshCw, RotateCcw, Save, Send, Square, Trash2, Video, CheckCircle2 } from 'lucide-react';
 
 type Torrent = { id: number; done: string; have: string; eta: string; uploadKbps: number; downloadKbps: number; ratio: string; status: string; name: string };
-type YoutubeJob = { id: string; url: string; quality: string; status: string; progress: number; speed: string; eta: string; output: string; outputPath: string; error: string };
+type YoutubeJob = { id: string; kind?: 'youtube' | 'hermes-request'; origin?: 'manual' | 'hermes'; url: string; quality: string; status: string; progress: number; speed: string; eta: string; output: string; outputPath: string; error: string };
 type Mount = { device: string; mount: string; type: string; removable: boolean; totalBytes: number; freeBytes: number };
 type Status = { settings: { downloadDir: string }; storage: { current: string; mounts: Mount[] }; qualityOptions: Array<{ id: string; label: string }>; tools: { transmission: boolean; ytDlp: boolean }; writable: boolean };
 
@@ -32,6 +32,7 @@ export const DownloadCenter: React.FC = () => {
   const [naturalRequest, setNaturalRequest] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const directoryEdited = useRef(false);
 
   const refresh = async () => {
     try {
@@ -41,7 +42,7 @@ export const DownloadCenter: React.FC = () => {
         api<YoutubeJob[]>('/api/downloads/youtube'),
       ]);
       setStatus(nextStatus); 
-      setDownloadDir(nextStatus.settings.downloadDir);
+      if (!directoryEdited.current) setDownloadDir(nextStatus.settings.downloadDir);
       setTorrentConnected(transmission.connected); 
       setTorrents(transmission.torrents || []); 
       setJobs(nextJobs);
@@ -73,22 +74,27 @@ export const DownloadCenter: React.FC = () => {
   };
 
   const visibleTorrents = torrents.filter((item) => item.done !== '100%');
-  const active = visibleTorrents.filter((item) => /download/i.test(item.status)).length + jobs.filter((item) => item.status === 'running').length;
+  const active = visibleTorrents.filter((item) => /download/i.test(item.status)).length + jobs.filter((item) => ['running', 'discovering'].includes(item.status)).length;
   const visibleYoutubeJobs = jobs.filter((item) => item.status !== 'completed');
+  const failedYoutubeJobs = jobs.filter((item) => item.status === 'failed');
   const selectedMount = status?.storage.mounts.find((item) => downloadDir === item.mount || downloadDir.startsWith(`${item.mount}/`));
 
   return (
-    <section className="space-y-5">
+    <section className="download-center space-y-5">
+      <div>
+        <h2 className="text-xl font-semibold text-[var(--text-main)]">다운로드</h2>
+        <p className="mt-1 text-sm text-[var(--text-sub)]">완료된 작업은 목록에서 사라집니다. 파일은 저장 위치에 그대로 남습니다.</p>
+      </div>
       {/* Ask Hermes Natural Prompt Box */}
       <div className="stitch-panel p-5 border-[var(--border-color)]">
         <div className="flex items-center gap-2 mb-1.5">
           <MessageSquareText className="w-4 h-4 text-[var(--accent-primary)]" />
           <h2 className="font-mono font-bold text-xs uppercase tracking-wider text-[var(--text-main)]">
-            Ask Hermes Downloader
+            원하는 영상 요청하기
           </h2>
         </div>
         <p className="text-xs text-[var(--text-muted)] mb-3">
-          원하는 콘텐츠를 자연어로 설명하세요. Hermes가 최적의 미디어를 탐색하여 자동 다운로드 큐에 적재합니다.
+          원하는 콘텐츠를 설명하면 Hermes가 검색하고 다운로드를 시작합니다. 영상 주소가 있다면 아래 YouTube 입력란을 이용하세요.
         </p>
         <form 
           className="flex flex-col sm:flex-row gap-2" 
@@ -97,13 +103,14 @@ export const DownloadCenter: React.FC = () => {
             const request = naturalRequest; 
             run(async () => { 
               const result = await api<{ message: string }>('/api/downloads/request', { method: 'POST', body: JSON.stringify({ prompt: request }) }); 
+              setNaturalRequest('');
               return result.message || 'Hermes가 요청을 처리했습니다.'; 
             }, ''); 
-            setNaturalRequest(''); 
           }}
         >
           <input 
             value={naturalRequest} 
+            aria-label="원하는 영상 설명"
             onChange={(event) => setNaturalRequest(event.target.value)} 
             maxLength={500} 
             placeholder="예: 태블릿용 추천 동요 3개 받아줘" 
@@ -114,18 +121,18 @@ export const DownloadCenter: React.FC = () => {
             className="px-4 py-2.5 rounded-lg bg-[var(--accent-primary-muted)] border border-[var(--border-focus)] text-[var(--accent-primary)] text-xs font-mono font-semibold disabled:opacity-40 transition-all hover:bg-[var(--accent-primary)] hover:text-black active:translate-y-[1px]"
           >
             <Send className="w-3.5 h-3.5 inline mr-1.5" />
-            REQUEST
+            요청하기
           </button>
         </form>
       </div>
 
       {/* Metric 4-Grid Status */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         {[
-          { label: 'TRANSMISSION DAEMON', val: torrentConnected ? 'ONLINE' : 'OFFLINE', col: torrentConnected ? 'text-emerald-400' : 'text-rose-400' },
-          { label: 'ACTIVE QUEUES', val: `${active} ACTIVE`, col: 'text-[var(--accent-primary)]' },
-          { label: 'STORAGE TARGET', val: status?.writable ? 'WRITABLE' : 'CHECK PATH', col: status?.writable ? 'text-emerald-400' : 'text-amber-400' },
-          { label: 'YOUTUBE ENGINE', val: status?.tools.ytDlp ? 'READY' : 'YT-DLP MISSING', col: status?.tools.ytDlp ? 'text-emerald-400' : 'text-amber-400' },
+          { label: '진행 중', val: `${active}개`, col: 'text-[var(--accent-primary)]' },
+          { label: '저장 공간', val: !status ? '확인 중' : status.writable ? '저장 가능' : '확인 필요', col: status?.writable ? 'text-emerald-400' : 'text-amber-400' },
+          { label: 'YouTube', val: !status ? '확인 중' : status.tools.ytDlp ? '사용 가능' : '설정 필요', col: status?.tools.ytDlp ? 'text-emerald-400' : 'text-amber-400' },
+          { label: '토렌트', val: !status ? '확인 중' : torrentConnected ? '연결됨' : '연결 끊김', col: torrentConnected ? 'text-emerald-400' : 'text-rose-400' },
         ].map((item) => (
           <div key={item.label} className="stitch-panel p-4">
             <div className="text-[10px] tracking-widest text-[var(--text-muted)] font-mono uppercase">{item.label}</div>
@@ -135,7 +142,7 @@ export const DownloadCenter: React.FC = () => {
       </div>
 
       {message && (
-        <div className="rounded-lg border border-[var(--border-focus)] bg-[var(--accent-primary-muted)] px-4 py-2.5 text-xs font-mono text-[var(--accent-primary)]">
+        <div role="status" className="rounded-lg border border-[var(--border-focus)] bg-[var(--accent-primary-muted)] px-4 py-2.5 text-xs font-mono text-[var(--accent-primary)]">
           {message}
         </div>
       )}
@@ -150,10 +157,10 @@ export const DownloadCenter: React.FC = () => {
               <div className="flex items-center gap-2">
                 <Download className="w-4 h-4 text-[var(--accent-primary)]" />
                 <h2 className="font-mono font-bold text-xs uppercase tracking-wider text-[var(--text-main)]">
-                  BitTorrent Client Queue
+                  토렌트 다운로드
                 </h2>
               </div>
-              <button onClick={refresh} className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
+              <button aria-label="다운로드 상태 새로고침" onClick={refresh} className="p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
                 <RefreshCw className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -168,6 +175,7 @@ export const DownloadCenter: React.FC = () => {
             >
               <input 
                 value={torrentUri} 
+                aria-label="토렌트 주소"
                 onChange={(e) => setTorrentUri(e.target.value)} 
                 placeholder="magnet:?xt=... 또는 torrent URL" 
                 className="flex-1 min-w-0 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg px-3 py-2 text-xs font-mono text-[var(--text-main)] outline-none focus:border-[var(--border-focus)]" 
@@ -177,7 +185,7 @@ export const DownloadCenter: React.FC = () => {
                 className="px-3.5 py-2 rounded-lg bg-[var(--accent-primary-muted)] border border-[var(--border-focus)] text-[var(--accent-primary)] text-xs font-mono font-semibold disabled:opacity-40 hover:bg-[var(--accent-primary)] hover:text-black transition-all"
               >
                 <Link className="w-3.5 h-3.5 inline mr-1" />
-                ADD
+                추가
               </button>
             </form>
 
@@ -224,13 +232,25 @@ export const DownloadCenter: React.FC = () => {
         </div>
 
         {/* YouTube Jobs */}
-        <div className="stitch-panel overflow-hidden flex flex-col justify-between">
+        <div className="stitch-panel overflow-hidden flex flex-col justify-between order-first">
           <div>
-            <div className="p-4 border-b border-[var(--border-color)] flex items-center gap-2">
-              <Video className="w-4 h-4 text-rose-400" />
-              <h2 className="font-mono font-bold text-xs uppercase tracking-wider text-[var(--text-main)]">
-                YouTube Pipeline
-              </h2>
+            <div className="p-4 border-b border-[var(--border-color)] flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Video className="w-4 h-4 text-rose-400" />
+                <h2 className="font-mono font-bold text-xs uppercase tracking-wider text-[var(--text-main)]">
+                  YouTube 다운로드
+                </h2>
+              </div>
+              {failedYoutubeJobs.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <button onClick={() => run(() => api('/api/downloads/youtube/failed/retry', { method: 'POST' }), `실패 작업 ${failedYoutubeJobs.length}개를 다시 시작했습니다.`)} disabled={busy} className="px-2.5 py-1.5 rounded border border-cyan-500/30 text-[10px] font-mono text-cyan-400 hover:bg-cyan-500/10 disabled:opacity-40 flex items-center gap-1">
+                    <RotateCcw className="w-3 h-3 inline" />실패 모두 재시작 ({failedYoutubeJobs.length})
+                  </button>
+                  <button onClick={() => run(() => api('/api/downloads/youtube/failed/clear', { method: 'POST' }), `실패 작업 ${failedYoutubeJobs.length}개를 정리했습니다.`)} disabled={busy} className="px-2.5 py-1.5 rounded border border-rose-500/30 text-[10px] font-mono text-rose-400 hover:bg-rose-500/10 disabled:opacity-40 flex items-center gap-1">
+                    <Trash2 className="w-3 h-3 inline" />실패 모두 정리 ({failedYoutubeJobs.length})
+                  </button>
+                </div>
+              )}
             </div>
 
             <form 
@@ -243,12 +263,14 @@ export const DownloadCenter: React.FC = () => {
             >
               <input 
                 value={youtubeUrl} 
+                aria-label="YouTube 영상 주소"
                 onChange={(e) => setYoutubeUrl(e.target.value)} 
                 placeholder="다운로드 대상 YouTube URL" 
                 className="flex-1 min-w-0 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg px-3 py-2 text-xs font-mono text-[var(--text-main)] outline-none focus:border-[var(--border-focus)]" 
               />
               <select 
                 value={youtubeQuality} 
+                aria-label="다운로드 화질"
                 onChange={(event) => setYoutubeQuality(event.target.value)} 
                 className="bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg px-3 py-2 text-xs text-[var(--text-main)] outline-none font-mono"
               >
@@ -260,12 +282,12 @@ export const DownloadCenter: React.FC = () => {
                 disabled={busy || !youtubeUrl || !status?.tools.ytDlp} 
                 className="px-3.5 py-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-mono font-semibold disabled:opacity-40 hover:bg-rose-500 hover:text-white transition-all"
               >
-                DOWNLOAD
+                다운로드
               </button>
             </form>
 
             <div className="px-4 py-2 text-[10px] text-[var(--text-muted)] font-mono border-b border-[var(--border-color)]">
-              ENGINE: H.264 + M4A MP4 • AUDIO 192K MP3
+              태블릿에는 720p를 권장합니다. 최고 화질은 원본에 따라 용량이 커질 수 있습니다.
             </div>
 
             {!status?.tools.ytDlp && (
@@ -286,16 +308,21 @@ export const DownloadCenter: React.FC = () => {
                     <div className="min-w-0">
                       <div className="text-xs font-mono text-[var(--text-main)] truncate">{job.outputPath || job.output || job.url}</div>
                       <div className="mt-0.5 text-[10px] font-mono text-[var(--text-muted)] uppercase">
-                        QUALITY: {job.quality || '720p'}
+                        {job.kind === 'hermes-request' ? 'HERMES · 콘텐츠 탐색 및 큐 등록' : `${job.origin === 'hermes' ? 'HERMES · ' : ''}QUALITY: ${job.quality || '720p'}`}
                       </div>
                     </div>
                     <span className={`text-[10px] font-mono uppercase font-bold ${job.status === 'failed' ? 'text-rose-400' : job.status === 'paused' ? 'text-amber-400' : 'text-cyan-400'}`}>
-                      {job.status}
+                      {({ running: '다운로드 중', discovering: '영상 검색 중', queued: '대기 중', paused: '일시정지', failed: '실패', cancelled: '취소됨' } as Record<string, string>)[job.status] || job.status}
                     </span>
                   </div>
                   <div className="h-1 bg-zinc-800 rounded-full mt-2.5 overflow-hidden">
-                    <div className="h-full bg-cyan-400 transition-all duration-300" style={{ width: `${job.progress || 0}%` }} />
+                    <div className={`h-full bg-cyan-400 transition-all duration-300 ${job.status === 'discovering' ? 'animate-pulse' : ''}`} style={{ width: `${job.status === 'discovering' ? 35 : job.progress || 0}%` }} />
                   </div>
+                  {job.status === 'failed' && job.error && (
+                    <div className="mt-2 text-[10px] font-mono text-rose-400/90 bg-rose-500/10 border border-rose-500/20 rounded p-2 break-all leading-relaxed">
+                      {job.error}
+                    </div>
+                  )}
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono text-[var(--text-muted)]">
                     <span className="tabular-nums">{job.progress || 0}% • {job.speed || '대기'}</span>
                     <div className="flex items-center gap-1">
@@ -315,6 +342,16 @@ export const DownloadCenter: React.FC = () => {
                           <Square className="w-3.5 h-3.5" />
                         </button>
                       )}
+                      {['failed', 'cancelled'].includes(job.status) && (
+                        <>
+                          <button title="작업 다시 시작" onClick={() => run(() => api(`/api/downloads/youtube/${job.id}/retry`, { method: 'POST' }), '작업을 다시 시작했습니다.')} className="p-1 text-cyan-400 hover:bg-cyan-500/10 rounded">
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          </button>
+                          <button title={job.status === 'failed' ? '실패 작업을 목록에서 제거' : '취소된 작업을 목록에서 제거'} onClick={() => run(() => api(`/api/downloads/youtube/${job.id}/remove`, { method: 'POST' }), '작업을 목록에서 제거했습니다.')} className="p-1 text-rose-400 hover:bg-rose-500/10 rounded">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -330,35 +367,36 @@ export const DownloadCenter: React.FC = () => {
         <div className="flex items-center gap-2 mb-3">
           <FolderCog className="w-4 h-4 text-[var(--accent-primary)]" />
           <h2 className="font-mono font-bold text-xs uppercase tracking-wider text-[var(--text-main)]">
-            Volume & Target Mount Configuration
+            저장 위치 설정
           </h2>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-2">
           <div>
-            <label className="block text-[10px] font-mono tracking-wider text-[var(--text-muted)] mb-1 uppercase">
-              Default Target Storage Directory
+            <label htmlFor="download-directory" className="block text-xs text-[var(--text-muted)] mb-1">
+              기본 다운로드 폴더
             </label>
             <input 
               value={downloadDir} 
-              onChange={(e) => setDownloadDir(e.target.value)} 
+              id="download-directory"
+              onChange={(e) => { directoryEdited.current = true; setDownloadDir(e.target.value); }}
               className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg px-3 py-2 text-xs font-mono text-[var(--text-main)] outline-none focus:border-[var(--border-focus)]"
             />
           </div>
           <button 
-            onClick={() => run(() => api('/api/downloads/settings', { method: 'PUT', body: JSON.stringify({ downloadDir }) }), '설정을 저장했습니다.')} 
+            onClick={() => run(async () => { await api('/api/downloads/settings', { method: 'PUT', body: JSON.stringify({ downloadDir }) }); directoryEdited.current = false; }, '설정을 저장했습니다.')}
             disabled={busy || !downloadDir} 
             className="self-end px-4 py-2 rounded-lg bg-[var(--accent-primary-muted)] border border-[var(--border-focus)] text-[var(--accent-primary)] text-xs font-mono font-semibold disabled:opacity-40 hover:bg-[var(--accent-primary)] hover:text-black transition-all"
           >
             <Save className="w-3.5 h-3.5 inline mr-1" />
-            SAVE TARGET
+            저장 위치 적용
           </button>
         </div>
 
         <div className="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
-          {status?.storage.mounts.map((mount) => (
+          {status?.storage.mounts.filter(mount => mount.mount.startsWith('/mnt/') || mount.mount.startsWith('/media/') || mount.mount.startsWith('/srv/')).map((mount) => (
             <button 
               key={mount.mount} 
-              onClick={() => setDownloadDir(`${mount.mount}/downloads`)} 
+              onClick={() => { directoryEdited.current = true; setDownloadDir(`${mount.mount}/downloads`); }}
               className={`text-left p-3 rounded-lg border transition-colors ${
                 selectedMount?.mount === mount.mount 
                   ? 'border-[var(--border-focus)] bg-[var(--accent-primary-muted)]' 
@@ -370,7 +408,7 @@ export const DownloadCenter: React.FC = () => {
                 {selectedMount?.mount === mount.mount && <CheckCircle2 className="w-3.5 h-3.5 text-[var(--accent-primary)]" />}
               </div>
               <div className="mt-1 text-[10px] font-mono text-[var(--text-muted)]">
-                {mount.device} • {mount.type} • <span className="text-emerald-400 font-semibold">{bytes(mount.freeBytes)} FREE</span> {mount.removable ? '• REMOVABLE' : ''}
+                {mount.device} · {mount.type} · <span className="text-emerald-400 font-semibold">{bytes(mount.freeBytes)} 여유</span>
               </div>
             </button>
           ))}

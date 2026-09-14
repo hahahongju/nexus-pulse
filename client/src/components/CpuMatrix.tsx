@@ -1,16 +1,18 @@
 import React from 'react';
-import { Cpu, Flame, Gauge } from 'lucide-react';
-import { CpuMetrics } from '../types/telemetry';
+import { Cpu, Flame, Gauge, Thermometer, HardDrive, Network, Layers } from 'lucide-react';
+import { CpuMetrics, ThermalSensor } from '../types/telemetry';
 
 interface CpuMatrixProps {
   cpu: CpuMetrics;
   brand?: string;
   coresCount?: number;
   loadavg: number[];
+  sensors?: ThermalSensor[];
 }
 
-export const CpuMatrix: React.FC<CpuMatrixProps> = ({ cpu, brand, coresCount, loadavg }) => {
+export const CpuMatrix: React.FC<CpuMatrixProps> = ({ cpu, brand, coresCount, loadavg, sensors: propSensors }) => {
   const cores = cpu.cores || [];
+  const sensors = propSensors || cpu.temperature?.sensors || [];
 
   const getCoreColorClass = (load: number) => {
     if (load > 85) return 'bg-rose-500';
@@ -115,6 +117,78 @@ export const CpuMatrix: React.FC<CpuMatrixProps> = ({ cpu, brand, coresCount, lo
           Total Detected: <span className="text-[var(--text-main)] font-semibold">{cores.length || coresCount || 0}</span> Cores
         </div>
       </div>
+
+      {/* Hardware Thermal Sensors Section */}
+      {sensors.length > 0 && (
+        <div className="mt-5 pt-4 border-t border-[var(--border-color)]">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              <Thermometer className="w-4 h-4 text-amber-400" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-main)] font-mono">
+                Hardware Thermal Telemetry Sensors
+              </h3>
+            </div>
+            <span className="text-[10px] font-mono text-[var(--text-muted)]">
+              {sensors.length} ACTIVE SENSORS ONLINE
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-2.5">
+            {sensors.map((sensor) => {
+              const isHot = sensor.temp >= 75;
+              const isWarm = sensor.temp >= 60;
+              return (
+                <div
+                  key={sensor.id}
+                  className={`p-2.5 rounded-lg border flex flex-col justify-between transition-all duration-200 hover:border-[var(--border-hover)] ${
+                    isHot
+                      ? 'bg-rose-500/10 border-rose-500/40 text-rose-300'
+                      : isWarm
+                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                      : 'bg-[var(--bg-surface)] border-[var(--border-color)] text-zinc-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-xs font-mono mb-1">
+                    <div className="flex items-center space-x-1.5 truncate">
+                      {sensor.category === 'cpu' && <Cpu className="w-3.5 h-3.5 text-cyan-400 shrink-0" />}
+                      {sensor.category === 'gpu' && <Flame className="w-3.5 h-3.5 text-indigo-400 shrink-0" />}
+                      {sensor.category === 'storage' && <HardDrive className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+                      {sensor.category === 'network' && <Network className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+                      {(sensor.category === 'motherboard' || sensor.category === 'system') && <Layers className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
+                      <span className="text-[10px] text-[var(--text-muted)] font-medium truncate uppercase" title={sensor.name}>
+                        {sensor.name}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-baseline justify-between mt-1">
+                    <span className={`text-base font-bold font-mono tabular-nums ${
+                      isHot ? 'text-rose-400' : isWarm ? 'text-amber-400' : 'text-[var(--text-main)]'
+                    }`}>
+                      {sensor.temp}°C
+                    </span>
+                    {(sensor.max || sensor.crit) && (
+                      <span className="text-[9px] font-mono text-[var(--text-muted)] tabular-nums">
+                        {sensor.max ? `lim ${sensor.max}°` : sensor.crit ? `crit ${sensor.crit}°` : ''}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Micro Thermal Bar */}
+                  <div className="w-full bg-zinc-800/80 h-1 rounded-full mt-2 overflow-hidden p-0">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${
+                        isHot ? 'bg-rose-500' : isWarm ? 'bg-amber-400' : 'bg-cyan-500'
+                      }`}
+                      style={{ width: `${Math.min(100, Math.max(5, (sensor.temp / 100) * 100))}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

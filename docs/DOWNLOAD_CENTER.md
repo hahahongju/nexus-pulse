@@ -18,6 +18,9 @@ Browser -> NexusPulse API/UI -> Transmission RPC -> transmission-daemon
 
 - Transmission 큐 조회, Magnet/HTTP(S) torrent URL 추가, 시작, 정지, 목록 제거
 - `yt-dlp` 단일 URL 다운로드, 진행률/속도/ETA 표시, 실패 메시지 표시
+- `yt-dlp` 출력을 비버퍼링하고 줄 단위로 누적 파싱해 장시간 작업도 진행률이 실시간 갱신됨
+- 실패한 YouTube 작업을 항목별로 다시 시작/제거하거나 `실패 모두 재시작` / `실패 모두 정리`로 일괄 제어
+- YouTube Pipeline은 실행 중 작업을 맨 위에 표시하고 탐색 중, 대기, 일시정지, 실패 순으로 정렬
 - YouTube JavaScript challenge 처리를 위한 Node runtime과 공식 `yt-dlp/ejs` solver 사용
 - 13인치 이하 태블릿 기본 프리셋: 최대 720p, H.264 영상, M4A 오디오, MP4 출력
 - 요청별 화질 선택: 360p, 480p, 720p(기본), 1080p, 최고 화질, MP3 192K
@@ -25,12 +28,16 @@ Browser -> NexusPulse API/UI -> Transmission RPC -> transmission-daemon
 - YouTube 작업 동시 실행 기본값 2개 (`YOUTUBE_CONCURRENCY`로 변경 가능)
 - 완료 작업은 큐 화면에서 자동으로 숨기고 MP4 파일만 저장 폴더에 유지
 - 웹 자연어 요청: 제한된 Hermes(`web,nexus_downloads`)를 통해 검색 후 큐 등록
+- Hermes의 콘텐츠 검색·선정 단계부터 작업을 표시하고, 등록된 영상은 `HERMES` 출처와 함께 기존 YouTube Pipeline에서 계속 추적
+- Hermes 요청 API는 즉시 작업 ID를 반환하고 검색은 백그라운드에서 기본 15분까지 계속 수행
+- Hermes Downloader는 전역 provider 장애의 영향을 피하도록 기본적으로 검증된 `custom:omniroute-fast/auto/pro-fast`를 사용
 - Linux 물리 마운트 탐지와 용량/여유 공간 표시
 - 기본 저장 디렉터리 설정 및 쓰기 가능 여부 진단
 - 다운로드 실행 도구 설치 여부와 Transmission RPC 연결 상태 표시
 - 데스크톱/모바일 대응 Downloads 탭
 
 설정은 기본적으로 `data/downloads.json`에 mode `0600`으로 기록되며 Git에 포함되지 않는다. `NEXUSPULSE_CONFIG_DIR`과 `DOWNLOAD_DIR` 환경변수로 위치를 바꿀 수 있다.
+Hermes 전용 provider와 모델은 각각 `HERMES_DOWNLOAD_PROVIDER`, `HERMES_DOWNLOAD_MODEL` 환경변수로 재정의할 수 있다. 검색 제한시간은 `HERMES_DOWNLOAD_TIMEOUT_MS`로 설정하며 허용 범위는 3~30분, 기본값은 15분이다.
 
 ## 운영 준비
 
@@ -71,7 +78,9 @@ Remote GUI는 Transmission daemon RPC에 직접 연결한다. NexusPulse가 RPC 
 | `POST` | `/api/downloads/transmission/:id/:action` | `start`, `stop`, `remove`, `delete` |
 | `GET` | `/api/downloads/youtube` | YouTube 작업 조회 |
 | `POST` | `/api/downloads/youtube` | YouTube URL 작업 시작 |
-| `POST` | `/api/downloads/youtube/:id/:action` | `pause`, `resume`, `cancel`, `remove`, `delete` |
+| `POST` | `/api/downloads/youtube/:id/:action` | `pause`, `resume`, `cancel`, `retry`, `remove`, `delete` |
+| `POST` | `/api/downloads/youtube/failed/retry` | 실패한 YouTube 작업 일괄 재시작 |
+| `POST` | `/api/downloads/youtube/failed/clear` | 실패한 YouTube 작업 기록 일괄 제거 |
 
 ## 운영 전 필수 보강
 

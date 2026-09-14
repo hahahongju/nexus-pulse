@@ -29,6 +29,17 @@ export interface SystemOverview {
   networkInterfaces?: Record<string, any[]>;
 }
 
+export interface ThermalSensor {
+  id: string;
+  chip: string;
+  label: string;
+  name: string;
+  category: 'cpu' | 'gpu' | 'storage' | 'network' | 'motherboard' | 'system';
+  temp: number;
+  crit?: number | null;
+  max?: number | null;
+}
+
 export interface CpuMetrics {
   usage: number;
   cores: number[];
@@ -36,6 +47,7 @@ export interface CpuMetrics {
     main: number | null;
     cores: number[];
     max?: number | null;
+    sensors?: ThermalSensor[];
   };
 }
 
@@ -101,6 +113,7 @@ export interface SystemMetrics {
     interfaces: NetworkInterfaceMetric[];
     io: NetworkIO;
   };
+  sensors?: ThermalSensor[];
   benchmarkActive: boolean;
 }
 
@@ -108,6 +121,7 @@ export interface HistoryPoint {
   timestamp: number;
   timeLabel: string;
   cpu: number;
+  cpuTemp?: number | null;
   ram: number;
   swap: number;
   load1: number;

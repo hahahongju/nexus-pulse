@@ -4,6 +4,7 @@ client/node_modules/
 
 # Production build output
 client/dist/
+client/dist.old/
 dist/
 
 # Logs & temp
@@ -11,7 +12,12 @@ dist/
 logs/
 .system_generated/
 scratch/
-data/*.json
+# Security & Cache
+.npm-cache/
+.chrome-bin/
+browser-test/
+data/security/
+data/downloads.json
 
 # Environment files
 .env

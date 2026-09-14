@@ -1,5 +1,5 @@
 import React from 'react';
-import { Cpu, HardDrive, Network, Layers, ArrowDown, ArrowUp, Activity } from 'lucide-react';
+import { Cpu, HardDrive, Network, Layers, ArrowDown, ArrowUp, Activity, Flame } from 'lucide-react';
 import { SystemMetrics, HistoryPoint } from '../types/telemetry';
 import { formatSpeed } from '../utils/formatters';
 
@@ -110,9 +110,17 @@ export const HeroCards: React.FC<HeroCardsProps> = ({ metrics, history }) => {
               </div>
             </div>
           </div>
-          <span className="px-2 py-0.5 text-[10px] font-mono font-semibold rounded bg-zinc-800/80 text-zinc-300 border border-zinc-700/60">
-            {metrics.cpu.cores.length}C
-          </span>
+          <div className="flex items-center space-x-1.5">
+            {metrics.cpu.temperature?.main != null && (
+              <span className="flex items-center space-x-1 px-1.5 py-0.5 text-[10px] font-mono font-semibold rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 tabular-nums">
+                <Flame className="w-3 h-3" />
+                <span>{metrics.cpu.temperature.main}°C</span>
+              </span>
+            )}
+            <span className="px-2 py-0.5 text-[10px] font-mono font-semibold rounded bg-zinc-800/80 text-zinc-300 border border-zinc-700/60">
+              {metrics.cpu.cores.length}C
+            </span>
+          </div>
         </div>
 
         <div className="mt-4 flex items-end justify-between">

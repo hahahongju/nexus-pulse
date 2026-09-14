@@ -20,8 +20,14 @@ async function run() {
   assert.ok(Array.isArray(transmission.torrents));
 
   assert.throws(() => downloads.startYoutube('file:///etc/passwd'), /설치되지 않았습니다|HTTP/);
-  assert.throws(() => downloads.startYoutube('https://example.com/video', '4k'), /화질/);
+  assert.throws(() => downloads.startYoutube('https://example.com/video', '4k'), /화질|YouTube 주소/);
   assert.deepEqual(downloads.qualityOptions().map((item) => item.id), ['360p', '480p', '720p', '1080p', 'best', 'audio']);
+  assert.deepEqual(downloads.clearFailedYoutubeJobs(), { removed: 0, ids: [] });
+  assert.deepEqual(downloads.retryFailedYoutubeJobs(), { retried: 0, ids: [] });
+  assert.deepEqual(downloads.parseYoutubeProgressLine('download: 44.2%| 33.99MiB/s|00:05'), {
+    progress: 44.2, speed: '33.99MiB/s', eta: '00:05',
+  });
+  assert.equal(downloads.parseYoutubeProgressLine('[download] 44.2%'), null);
   console.log('Download manager tests passed.');
 }
 

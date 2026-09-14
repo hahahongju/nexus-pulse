@@ -195,7 +195,7 @@ export const AlertsBanner: React.FC<AlertsBannerProps> = ({ alerts, rules, onUpd
           className="flex items-center space-x-1.5 px-3 py-1 rounded-md bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-color)] text-xs font-mono text-[var(--text-sub)] hover:text-[var(--text-main)] transition-colors"
         >
           <Settings className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
-          <span>Configure Alerts</span>
+          <span>알림 기준 설정</span>
         </button>
       </div>
     </div>

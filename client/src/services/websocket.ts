@@ -1,10 +1,11 @@
 import { SystemMetrics, SystemOverview, HistoryPoint, AlertItem, AlertRules, LogEntry, ProcessResponse, OpenPort } from '../types/telemetry';
+import { authService } from './auth';
 
 type MessageHandler = (type: string, data: any) => void;
 
 class WebSocketClient {
   private ws: WebSocket | null = null;
-  private url: string;
+  private baseUrl: string;
   private handlers: Set<MessageHandler> = new Set();
   private reconnectTimer: any = null;
   public isConnected: boolean = false;
@@ -13,17 +14,33 @@ class WebSocketClient {
   constructor() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
-    // In dev mode with vite proxy or production
-    this.url = `${protocol}//${host}/ws`;
+    this.baseUrl = `${protocol}//${host}/ws`;
+
+    // Automatically send auth message if token changes while connected
+    authService.subscribe((token) => {
+      if (!token && this.ws) this.ws.close();
+      if (token && this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.authenticate(token);
+      }
+    });
+  }
+
+  private getUrlWithToken(): string {
+    const token = authService.getToken();
+    if (token) {
+      return `${this.baseUrl}?token=${encodeURIComponent(token)}`;
+    }
+    return this.baseUrl;
   }
 
   connect() {
+    if (!authService.isAuthenticated()) return;
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
       return;
     }
 
     try {
-      this.ws = new WebSocket(this.url);
+      this.ws = new WebSocket(this.getUrlWithToken());
 
       this.ws.onopen = () => {
         this.isConnected = true;
@@ -31,6 +48,11 @@ class WebSocketClient {
         if (this.reconnectTimer) {
           clearTimeout(this.reconnectTimer);
           this.reconnectTimer = null;
+        }
+
+        const token = authService.getToken();
+        if (token) {
+          this.authenticate(token);
         }
       };
 
@@ -127,6 +149,36 @@ class WebSocketClient {
 
   deployDemoContainer() {
     this.send({ action: 'deploy_demo_container' });
+  }
+
+  authenticate(token: string) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.send({ type: 'auth', token });
+    }
+  }
+
+  reconnect() {
+    if (this.ws) {
+      try { this.ws.close(); } catch (e) {}
+      this.ws = null;
+    }
+    this.connect();
+  }
+
+  disconnect() {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (this.ws) {
+      try {
+        this.ws.onclose = null;
+        this.ws.close();
+      } catch (e) {}
+      this.ws = null;
+    }
+    this.isConnected = false;
+    this.notify('status', { connected: false });
   }
 }
 

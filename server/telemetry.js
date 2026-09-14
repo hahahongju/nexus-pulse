@@ -20,7 +20,7 @@
 const os = require('os');
 const fs = require('fs');
 const path = require('path');
-const { exec, execSync } = require('child_process');
+const { execFile, execFileSync } = require('child_process');
 const si = require('systeminformation');
 const { Worker } = require('worker_threads');
 
@@ -166,25 +166,124 @@ function parseProcDiskstats() {
 }
 
 function parseThermalSensors() {
-  const temps = [];
+  const sensors = [];
+  const seenIds = new Set();
+
+  // 1. Hwmon hardware sensors (/sys/class/hwmon)
+  try {
+    if (fs.existsSync('/sys/class/hwmon')) {
+      const hwmons = fs.readdirSync('/sys/class/hwmon');
+      for (const h of hwmons) {
+        const dir = path.join('/sys/class/hwmon', h);
+        let chipName = '';
+        try { chipName = (safeReadFile(path.join(dir, 'name')) || h).trim(); } catch (e) { chipName = h; }
+
+        let files = [];
+        try { files = fs.readdirSync(dir); } catch (e) {}
+        const tempInputs = files.filter(f => /^temp\d+_input$/.test(f));
+
+        for (const input of tempInputs) {
+          const prefix = input.replace('_input', '');
+          let label = (safeReadFile(path.join(dir, `${prefix}_label`)) || '').trim() || prefix;
+
+          let crit = null;
+          let max = null;
+          const critRaw = safeReadFile(path.join(dir, `${prefix}_crit`));
+          const maxRaw = safeReadFile(path.join(dir, `${prefix}_max`));
+          if (critRaw) {
+            const v = parseFloat(critRaw.trim()) / 1000;
+            if (!isNaN(v) && v > 0) crit = Math.round(v * 10) / 10;
+          }
+          if (maxRaw) {
+            const v = parseFloat(maxRaw.trim()) / 1000;
+            if (!isNaN(v) && v > 0) max = Math.round(v * 10) / 10;
+          }
+
+          const raw = safeReadFile(path.join(dir, input));
+          if (raw) {
+            const deg = parseFloat(raw.trim()) / 1000;
+            if (!isNaN(deg) && deg > -50 && deg < 150) {
+              const tempVal = Math.round(deg * 10) / 10;
+              const sensorId = `${chipName}_${label}`.toLowerCase();
+              if (!seenIds.has(sensorId)) {
+                seenIds.add(sensorId);
+
+                // Sensor category classification
+                let category = 'system';
+                const lowerChip = chipName.toLowerCase();
+                const lowerLabel = label.toLowerCase();
+                if (lowerChip.includes('k10temp') || lowerChip.includes('coretemp') || lowerChip.includes('cpu') || lowerLabel.includes('tctl') || lowerLabel.includes('tdie') || lowerLabel.includes('package id')) {
+                  category = 'cpu';
+                } else if (lowerChip.includes('amdgpu') || lowerChip.includes('nvidia') || lowerChip.includes('nouveau') || lowerChip.includes('i915') || lowerLabel.includes('edge') || lowerLabel.includes('junction')) {
+                  category = 'gpu';
+                } else if (lowerChip.includes('nvme') || lowerChip.includes('drivetemp') || lowerLabel.includes('composite')) {
+                  category = 'storage';
+                } else if (lowerChip.includes('r8169') || lowerChip.includes('igb') || lowerChip.includes('e1000e') || lowerChip.includes('mt7921') || lowerChip.includes('wifi') || lowerChip.includes('wlan') || lowerChip.includes('eth')) {
+                  category = 'network';
+                } else if (lowerChip.includes('acpitz') || lowerChip.includes('pch')) {
+                  category = 'motherboard';
+                }
+
+                // Display Name
+                let displayName = `${chipName} (${label})`;
+                if (category === 'cpu') displayName = `CPU ${label === 'Tctl' ? 'Tctl (Package)' : label}`;
+                else if (category === 'gpu') displayName = `GPU ${chipName} (${label})`;
+                else if (category === 'storage') displayName = `NVMe SSD (${label})`;
+                else if (category === 'network') displayName = `NIC ${chipName}`;
+                else if (category === 'motherboard') displayName = `Motherboard (${chipName})`;
+
+                sensors.push({
+                  id: `${h}_${prefix}`,
+                  chip: chipName,
+                  label,
+                  name: displayName,
+                  category,
+                  temp: tempVal,
+                  crit,
+                  max
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {}
+
+  // 2. Thermal zones (/sys/class/thermal)
   try {
     if (fs.existsSync('/sys/class/thermal')) {
       const zones = fs.readdirSync('/sys/class/thermal').filter(z => z.startsWith('thermal_zone'));
       for (const z of zones) {
         try {
           const raw = safeReadFile(`/sys/class/thermal/${z}/temp`);
-          const type = safeReadFile(`/sys/class/thermal/${z}/type`) || 'cpu';
+          const type = (safeReadFile(`/sys/class/thermal/${z}/type`) || 'acpi').trim();
           if (raw) {
             const deg = parseFloat(raw.trim()) / 1000;
             if (!isNaN(deg) && deg > 0 && deg < 150) {
-              temps.push({ zone: z, type: type.trim(), temp: Math.round(deg * 10) / 10 });
+              const tempVal = Math.round(deg * 10) / 10;
+              const sensorId = `${type}_${z}`.toLowerCase();
+              if (!seenIds.has(sensorId)) {
+                seenIds.add(sensorId);
+                sensors.push({
+                  id: z,
+                  chip: type,
+                  label: type,
+                  name: `Thermal Zone (${type})`,
+                  category: type.toLowerCase().includes('cpu') ? 'cpu' : 'motherboard',
+                  temp: tempVal,
+                  crit: null,
+                  max: null
+                });
+              }
             }
           }
         } catch (e) {}
       }
     }
   } catch (e) {}
-  return temps;
+
+  return sensors;
 }
 
 function parsePowerSupply() {
@@ -634,10 +733,19 @@ class TelemetryEngine {
 
     // 5. Thermal & Battery Sensors
     const thermalList = parseThermalSensors();
+    const cpuSensors = thermalList.filter(s => s.category === 'cpu');
+    const cpuMainTemp = cpuSensors.length > 0
+      ? cpuSensors[0].temp
+      : (thermalList.length > 0 ? thermalList[0].temp : null);
+    const maxTemp = thermalList.length > 0
+      ? Math.max(...thermalList.map(t => t.temp))
+      : null;
+
     let temp = {
-      main: thermalList.length > 0 ? thermalList[0].temp : null,
-      cores: thermalList.map(t => t.temp),
-      max: thermalList.length > 0 ? Math.max(...thermalList.map(t => t.temp)) : null
+      main: cpuMainTemp,
+      cores: cpuSensors.map(t => t.temp),
+      max: maxTemp,
+      sensors: thermalList
     };
 
     const batteryInfo = parsePowerSupply();
@@ -664,6 +772,7 @@ class TelemetryEngine {
         interfaces: netInterfaces,
         io: netIO
       },
+      sensors: thermalList,
       battery: batteryInfo,
       benchmarkActive: this.isBenchmarking,
       benchmarkDetails: this.benchmarkDetails
@@ -692,6 +801,7 @@ class TelemetryEngine {
         hour12: false
       }),
       cpu: snapshot.cpu.usage,
+      cpuTemp: snapshot.cpu.temperature?.main || null,
       ram: snapshot.memory.usedPercent,
       swap: snapshot.memory.swapPercent,
       load1: snapshot.loadavg[0],
@@ -1186,7 +1296,7 @@ class TelemetryEngine {
         };
       } else {
         try {
-          execSync('which docker', { stdio: 'ignore' });
+          execFileSync('which', ['docker'], { stdio: 'ignore' });
           dockerInfo.installed = true;
           dockerInfo.active = false;
         } catch (e) {}
@@ -1251,19 +1361,18 @@ class TelemetryEngine {
       throw new Error(`Unsupported container action: ${action}`);
     }
 
-    let dockerCmd = `docker ${act} ${containerId}`;
-    if (act === 'remove' || act === 'delete' || act === 'rm') {
-      dockerCmd = `docker rm -f ${containerId}`;
-    }
+    const args = (act === 'remove' || act === 'delete' || act === 'rm')
+      ? ['rm', '-f', containerId]
+      : [act, containerId];
 
     return new Promise((resolve, reject) => {
-      exec(dockerCmd, (err, stdout, stderr) => {
+      execFile('docker', args, (err, stdout, stderr) => {
         if (err) {
-          this.addLog('ERROR', `Container action failed: ${dockerCmd} -> ${stderr || err.message}`, 'docker');
+          this.addLog('ERROR', `Container action failed: docker ${args.join(' ')} -> ${stderr || err.message}`, 'docker');
           return reject(new Error(stderr || err.message));
         }
         this.addLog('SUCCESS', `Container ${containerId} ${act} executed successfully.`, 'docker');
-        resolve({ success: true, containerId, action: act, output: stdout.trim() });
+        resolve({ success: true, containerId, action: act, output: (stdout || '').trim() });
       });
     });
   }
@@ -1275,7 +1384,7 @@ class TelemetryEngine {
     const safeTail = Math.max(10, Math.min(1000, parseInt(tail, 10) || 100));
 
     return new Promise((resolve, reject) => {
-      exec(`docker logs --tail ${safeTail} --timestamps ${containerId}`, (err, stdout, stderr) => {
+      execFile('docker', ['logs', '--tail', String(safeTail), '--timestamps', containerId], (err, stdout, stderr) => {
         const rawOutput = (stdout || '') + (stderr || '');
         const lines = rawOutput.split('\n').filter(Boolean).map(line => {
           const match = line.match(/^(\S+)\s+(.*)$/);
@@ -1291,13 +1400,24 @@ class TelemetryEngine {
 
   async deployDemoContainer() {
     return new Promise((resolve, reject) => {
-      exec('docker rm -f nexus-pulse-demo 2>/dev/null; docker run -d --name nexus-pulse-demo -p 8899:80 nginx:alpine || docker run -d --name nexus-pulse-demo alpine sleep 3600', (err, stdout, stderr) => {
-        if (err) {
-          this.addLog('ERROR', `Failed to deploy demo container: ${stderr || err.message}`, 'docker');
-          return reject(new Error(stderr || err.message));
-        }
-        this.addLog('SUCCESS', `Demo container deployed: ${stdout.trim().substring(0, 12)}`, 'docker');
-        resolve({ success: true, containerId: stdout.trim().substring(0, 12) });
+      execFile('docker', ['rm', '-f', 'nexus-pulse-demo'], () => {
+        execFile('docker', ['run', '-d', '--name', 'nexus-pulse-demo', '-p', '8899:80', 'nginx:alpine'], (err, stdout, stderr) => {
+          if (err) {
+            execFile('docker', ['run', '-d', '--name', 'nexus-pulse-demo', 'alpine', 'sleep', '3600'], (err2, stdout2, stderr2) => {
+              if (err2) {
+                this.addLog('ERROR', `Failed to deploy demo container: ${stderr2 || err2.message}`, 'docker');
+                return reject(new Error(stderr2 || err2.message));
+              }
+              const cid = (stdout2 || '').trim().substring(0, 12);
+              this.addLog('SUCCESS', `Demo container deployed: ${cid}`, 'docker');
+              resolve({ success: true, containerId: cid });
+            });
+            return;
+          }
+          const cid = (stdout || '').trim().substring(0, 12);
+          this.addLog('SUCCESS', `Demo container deployed: ${cid}`, 'docker');
+          resolve({ success: true, containerId: cid });
+        });
       });
     });
   }
@@ -1318,7 +1438,7 @@ class TelemetryEngine {
 
     let virtType = 'none';
     try {
-      const out = execSync('systemd-detect-virt 2>/dev/null || echo "none"', { encoding: 'utf8' }).trim();
+      const out = execFileSync('systemd-detect-virt', [], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
       virtType = out.split('\n')[0].trim().toLowerCase();
     } catch (e) {
       virtType = 'none';
@@ -1340,7 +1460,7 @@ class TelemetryEngine {
 
     const checkBin = (bin) => {
       try {
-        execSync(`which ${bin}`, { stdio: 'ignore' });
+        execFileSync('which', [bin], { stdio: 'ignore' });
         return true;
       } catch (e) {
         return false;
@@ -1359,12 +1479,17 @@ class TelemetryEngine {
     try {
       let virshOut = '';
       try {
-        virshOut = execSync('virsh -c qemu:///system list --all 2>/dev/null || virsh list --all 2>/dev/null || true', { encoding: 'utf8' }).trim();
-      } catch (e) {}
+        virshOut = execFileSync('virsh', ['-c', 'qemu:///system', 'list', '--all'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+      } catch (e) {
+        try {
+          virshOut = execFileSync('virsh', ['list', '--all'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+        } catch (e2) {}
+      }
 
       let psOut = '';
       try {
-        psOut = execSync('ps aux | grep "[q]emu-system"', { encoding: 'utf8' }).trim();
+        const rawPs = execFileSync('ps', ['aux'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+        psOut = rawPs.split('\n').filter(line => line.includes('qemu-system')).join('\n');
       } catch (e) {}
 
       const qemuProcesses = [];
@@ -1441,7 +1566,14 @@ class TelemetryEngine {
             let memoryMb = 2048;
             let autostart = false;
             try {
-              const infoOut = execSync(`virsh -c qemu:///system dominfo ${name} 2>/dev/null || virsh dominfo ${name} 2>/dev/null || true`, { encoding: 'utf8' });
+              let infoOut = '';
+              try {
+                infoOut = execFileSync('virsh', ['-c', 'qemu:///system', 'dominfo', name], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+              } catch (e1) {
+                try {
+                  infoOut = execFileSync('virsh', ['dominfo', name], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+                } catch (e2) {}
+              }
               const vcpuM = infoOut.match(/CPU\(s\):\s+([0-9]+)/);
               if (vcpuM) vcpus = parseInt(vcpuM[1], 10);
               const memM = infoOut.match(/Max memory:\s+([0-9]+)\s+KiB/);
@@ -1543,13 +1675,20 @@ class TelemetryEngine {
     if (act === 'pause') virshCmd = 'suspend';
 
     return new Promise((resolve, reject) => {
-      exec(`virsh -c qemu:///system ${virshCmd} ${vmName} || virsh ${virshCmd} ${vmName}`, (err, stdout, stderr) => {
+      execFile('virsh', ['-c', 'qemu:///system', virshCmd, vmName], (err, stdout, stderr) => {
         if (err) {
-          this.addLog('ERROR', `VM action failed: virsh ${virshCmd} ${vmName} -> ${stderr || err.message}`, 'virtualization');
-          return reject(new Error(stderr || err.message));
+          execFile('virsh', [virshCmd, vmName], (err2, stdout2, stderr2) => {
+            if (err2) {
+              this.addLog('ERROR', `VM action failed: virsh ${virshCmd} ${vmName} -> ${stderr2 || err2.message}`, 'virtualization');
+              return reject(new Error(stderr2 || err2.message));
+            }
+            this.addLog('SUCCESS', `VM ${vmName} ${act} executed successfully.`, 'virtualization');
+            resolve({ success: true, vmName, action: act, output: (stdout2 || '').trim() });
+          });
+          return;
         }
         this.addLog('SUCCESS', `VM ${vmName} ${act} executed successfully.`, 'virtualization');
-        resolve({ success: true, vmName, action: act, output: stdout.trim() });
+        resolve({ success: true, vmName, action: act, output: (stdout || '').trim() });
       });
     });
   }

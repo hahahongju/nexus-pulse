@@ -2,9 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 3px;
+}
+
+header button, header select, .download-center button, .download-center input,
+.download-center select, .security-dialog button {
+  min-height: 44px;
+}
+
+.download-center button[title] { min-width: 44px; }
+.download-center input, .download-center select { font-size: 14px; }
+@media (max-width: 640px) {
+  header { position: relative !important; }
+  .download-center input, .download-center select { font-size: 16px; }
+}
+
 :root {
-  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
-  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Noto Sans KR', ui-monospace, monospace;
+  --font-sans: 'Inter', 'Noto Sans KR', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   
   /* Stitch Theme: Cyber Obsidian (Default) */
   --bg-primary: #09090b;

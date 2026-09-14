@@ -45,10 +45,15 @@ import { AlertsBanner } from './components/AlertsBanner';
 import { ContainerView } from './components/ContainerView';
 import { VirtualizationView } from './components/VirtualizationView';
 import { DownloadCenter } from './components/DownloadCenter';
+import { LoginGate } from './components/LoginGate';
+import { authService } from './services/auth';
 
 type TabKey = 'overview' | 'charts' | 'processes' | 'containers' | 'downloads' | 'logs' | 'benchmark' | 'ports';
 
 export const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isVerifyingAuth, setIsVerifyingAuth] = useState<boolean>(true);
+
   const [overview, setOverview] = useState<SystemOverview | null>(null);
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
@@ -82,8 +87,60 @@ export const App: React.FC = () => {
     sound.enabled = soundEnabled;
   }, [soundEnabled]);
 
-  // Initialize WebSocket connection & listeners
+  // Verify existing token on initial mount
   useEffect(() => {
+    let mounted = true;
+    const verifyAuth = async () => {
+      const token = authService.getToken();
+      if (!token) {
+        if (mounted) {
+          setIsAuthenticated(false);
+          setIsVerifyingAuth(false);
+        }
+        return;
+      }
+
+      try {
+        const res = await authService.verifyToken(token);
+        if (mounted) {
+          if (res.valid) {
+            setIsAuthenticated(true);
+          } else {
+            authService.clearToken();
+            setIsAuthenticated(false);
+          }
+          setIsVerifyingAuth(false);
+        }
+      } catch (e) {
+        if (mounted) {
+          setIsAuthenticated(false);
+          setIsVerifyingAuth(false);
+        }
+      }
+    };
+
+    verifyAuth();
+    const handleExpiredSession = () => { authService.clearToken(); };
+    window.addEventListener('nexus:unauthorized', handleExpiredSession);
+
+    const unsubscribe = authService.subscribe((token) => {
+      if (!token) {
+        setIsAuthenticated(false);
+        wsClient.disconnect();
+      }
+    });
+
+    return () => {
+      mounted = false;
+      window.removeEventListener('nexus:unauthorized', handleExpiredSession);
+      unsubscribe();
+    };
+  }, []);
+
+  // Initialize WebSocket connection & listeners ONLY when authenticated
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
     wsClient.connect();
 
     const unsubscribe = wsClient.subscribe((type, data) => {
@@ -159,7 +216,7 @@ export const App: React.FC = () => {
     return () => {
       unsubscribe();
     };
-  }, [soundEnabled]);
+  }, [isAuthenticated, soundEnabled]);
 
   const fetchContainers = async () => {
     try {
@@ -189,6 +246,7 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     fetchContainers();
     fetchVirtualization();
     const interval = setInterval(() => {
@@ -198,28 +256,55 @@ export const App: React.FC = () => {
       }
     }, 2500);
     return () => clearInterval(interval);
-  }, [activeTab]);
+  }, [isAuthenticated, activeTab]);
 
   // Local uptime increment timer
   useEffect(() => {
+    if (!isAuthenticated) return;
     const timer = setInterval(() => {
       setUptimeSec((prev) => prev + 1);
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [isAuthenticated]);
 
   const totalInstancesCount = (containers?.length || 0) + (virtualization?.vms?.length || 0);
 
   const tabs: { key: TabKey; label: string; icon: React.ReactNode; badge?: number }[] = [
-    { key: 'overview', label: 'Overview HUD', icon: <Layers className="w-4 h-4" /> },
-    { key: 'charts', label: 'Oscilloscope', icon: <LineChart className="w-4 h-4" /> },
-    { key: 'processes', label: 'Processes', icon: <Terminal className="w-4 h-4" /> },
-    { key: 'containers', label: 'Containers & VMs', icon: <Box className="w-4 h-4" />, badge: totalInstancesCount > 0 ? totalInstancesCount : undefined },
-    { key: 'downloads', label: 'Downloads', icon: <Download className="w-4 h-4" /> },
-    { key: 'logs', label: 'System Logs', icon: <Activity className="w-4 h-4" />, badge: logs.length },
-    { key: 'benchmark', label: 'Stress Benchmark', icon: <Flame className="w-4 h-4" /> },
-    { key: 'ports', label: 'Ports & Sockets', icon: <Radio className="w-4 h-4" /> },
+    { key: 'overview', label: '서버 현황', icon: <Layers className="w-4 h-4" /> },
+    { key: 'downloads', label: '다운로드', icon: <Download className="w-4 h-4" /> },
+    { key: 'charts', label: '사용량 추이', icon: <LineChart className="w-4 h-4" /> },
+    { key: 'containers', label: '컨테이너·VM', icon: <Box className="w-4 h-4" /> },
+    { key: 'processes', label: '프로세스', icon: <Terminal className="w-4 h-4" /> },
+    { key: 'logs', label: '시스템 로그', icon: <Activity className="w-4 h-4" /> },
+    { key: 'ports', label: '네트워크 포트', icon: <Radio className="w-4 h-4" /> },
+    { key: 'benchmark', label: '성능 테스트', icon: <Flame className="w-4 h-4" /> },
   ];
+
+  // 1. Verifying active session token
+  if (isVerifyingAuth) {
+    return (
+      <div className="min-h-screen bg-[var(--bg-primary)] flex flex-col items-center justify-center text-slate-100 font-sans">
+        <div className="relative flex items-center justify-center w-14 h-14 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-color)] mb-4 shadow-xl">
+          <ShieldAlert className="w-7 h-7 text-[var(--accent-primary)] animate-pulse" />
+        </div>
+        <div className="flex items-center gap-2 text-xs font-mono text-[var(--text-sub)]">
+          <span className="w-2 h-2 rounded-full bg-[var(--accent-primary)] animate-ping" />
+          <span>보안 세션 검증 중... (Verifying Security Perimeter)</span>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Not Authenticated -> Full-Screen Lock Screen & Login Gatekeeper
+  if (!isAuthenticated) {
+    return (
+      <LoginGate
+        onLoginSuccess={() => {
+          setIsAuthenticated(true);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-slate-100 flex flex-col font-sans transition-colors duration-300">
@@ -238,34 +323,39 @@ export const App: React.FC = () => {
           setPollInterval(val);
           wsClient.setInterval(val);
         }}
+        onLock={async () => {
+          await authService.logout();
+          setIsAuthenticated(false);
+          wsClient.disconnect();
+        }}
       />
 
       {/* Main Container */}
       <main className="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 flex flex-col">
         
         {/* Active Alerts Banner */}
-        <AlertsBanner
+        {(activeTab === 'overview' || alerts.length > 0) && <AlertsBanner
           alerts={alerts}
           rules={rules}
           onUpdateRules={(newRules) => setRules(newRules)}
-        />
+        />}
 
         {/* Hero Cards (Always visible on top) */}
-        <HeroCards metrics={metrics} history={history} />
 
         {/* Navigation Tabs Segmented Dock */}
-        <div className="p-1 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl mb-6 overflow-x-auto shadow-sm">
-          <div className="flex items-center space-x-1 min-w-max">
+        <nav aria-label="주요 메뉴" className="p-1 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl mb-6 shadow-sm">
+          <div className="grid grid-cols-4 lg:grid-cols-8 gap-1">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.key;
               return (
                 <button
                   key={tab.key}
+                  aria-current={isActive ? 'page' : undefined}
                   onClick={() => {
                     setActiveTab(tab.key);
                     sound.playTabSwitch();
                   }}
-                  className={`flex items-center space-x-2 px-3.5 py-2 rounded-lg font-mono text-xs font-semibold whitespace-nowrap transition-all ${
+                  className={`flex flex-col sm:flex-row justify-center items-center gap-1.5 px-1 sm:px-2 py-3 min-h-12 rounded-lg text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all ${
                     isActive
                       ? 'bg-[var(--bg-primary)] text-[var(--accent-primary)] border border-[var(--border-focus)] shadow-sm'
                       : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-white/[0.04] border border-transparent'
@@ -273,20 +363,13 @@ export const App: React.FC = () => {
                 >
                   {tab.icon}
                   <span>{tab.label}</span>
-                  {tab.badge !== undefined && tab.badge > 0 && (
-                    <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold ${
-                      isActive 
-                        ? 'bg-[var(--accent-primary-muted)] text-[var(--accent-primary)]' 
-                        : 'bg-zinc-800 text-zinc-400'
-                    }`}>
-                      {tab.badge}
-                    </span>
-                  )}
                 </button>
               );
             })}
           </div>
-        </div>
+        </nav>
+
+        {['overview', 'charts'].includes(activeTab) && <HeroCards metrics={metrics} history={history} />}
 
         {/* Tab Content Panels */}
         <div className="flex-1 space-y-6">
@@ -301,6 +384,7 @@ export const App: React.FC = () => {
                     brand={overview?.cpu.brand}
                     coresCount={overview?.cpu.cores}
                     loadavg={metrics.loadavg}
+                    sensors={metrics.sensors}
                   />
 
                   <MemoryStorageView
@@ -372,10 +456,10 @@ export const App: React.FC = () => {
           <span>•</span>
           <span>Node {overview?.nodeVersion || 'v22'}</span>
           <span>•</span>
-          <span className="text-[var(--accent-primary)]">Stitch Design System</span>
+          <span className="text-[var(--accent-primary)] whitespace-nowrap">서버 관리</span>
         </div>
         <div>
-          Autonomous Real-Time Observability Engine
+          실시간 서버 상태 및 다운로드 관리
         </div>
       </footer>
 

@@ -9,7 +9,11 @@ const CONFIG_FILE = path.join(CONFIG_DIR, 'downloads.json');
 const DEFAULT_DOWNLOAD_DIR = process.env.DOWNLOAD_DIR || '/mnt/storage/downloads';
 const MAX_YOUTUBE_CONCURRENCY = Math.max(1, Number(process.env.YOUTUBE_CONCURRENCY) || 2);
 const HERMES_BIN = process.env.HERMES_BIN || '/home/hongju/.hermes/hermes-agent/venv/bin/hermes';
+const HERMES_PROVIDER = process.env.HERMES_DOWNLOAD_PROVIDER || 'custom:omniroute-fast';
+const HERMES_MODEL = process.env.HERMES_DOWNLOAD_MODEL || 'auto/pro-fast';
+const HERMES_DOWNLOAD_TIMEOUT_MS = Math.min(30 * 60 * 1000, Math.max(3 * 60 * 1000, Number(process.env.HERMES_DOWNLOAD_TIMEOUT_MS) || 15 * 60 * 1000));
 const jobs = new Map();
+const activeHermesRequests = new Set();
 const YOUTUBE_QUALITY_PRESETS = Object.freeze({
   '360p': {
     label: '360p 용량 절약',
@@ -61,14 +65,41 @@ function readSettings() {
   }
 }
 
+const FORBIDDEN_ROOT_DIRS = [
+  '/', '/bin', '/boot', '/dev', '/etc', '/lib', '/lib64', '/proc', '/root', '/run', '/sbin', '/sys', '/usr', '/var'
+];
+const SENSITIVE_USER_DIRS = [
+  '.ssh', '.gnupg', '.config/systemd'
+];
+
 function validateDownloadDir(input) {
   if (typeof input !== 'string' || !path.isAbsolute(input)) throw new Error('저장 경로는 절대 경로여야 합니다.');
   const resolved = path.resolve(input.trim());
-  if (!fs.existsSync(resolved)) fs.mkdirSync(resolved, { recursive: true });
-  const stat = fs.statSync(resolved);
+  const normalized = path.normalize(resolved);
+
+  for (const forbidden of FORBIDDEN_ROOT_DIRS) {
+    if (normalized === forbidden || normalized.startsWith(forbidden + path.sep)) {
+      if (normalized.startsWith('/mnt/') || normalized.startsWith('/media/')) {
+        continue;
+      }
+      throw new Error(`보호된 시스템 디렉터리(${forbidden})는 저장 경로로 사용할 수 없습니다.`);
+    }
+  }
+
+  for (const sensitive of SENSITIVE_USER_DIRS) {
+    if (normalized.includes(`/${sensitive}`) || normalized.endsWith(`/${sensitive}`)) {
+      throw new Error(`보안에 민감한 디렉터리(${sensitive})는 저장 경로로 사용할 수 없습니다.`);
+    }
+  }
+
+  if (!fs.existsSync(normalized)) fs.mkdirSync(normalized, { recursive: true });
+  const realPath = fs.realpathSync(normalized);
+  const allowedExternal = realPath === '/mnt' || realPath.startsWith('/mnt/') || realPath === '/media' || realPath.startsWith('/media/');
+  if (!allowedExternal && realPath !== normalized) throw new Error('심볼릭 링크를 통한 저장 경로는 사용할 수 없습니다.');
+  const stat = fs.statSync(realPath);
   if (!stat.isDirectory()) throw new Error('저장 경로가 디렉터리가 아닙니다.');
-  fs.accessSync(resolved, fs.constants.R_OK | fs.constants.W_OK);
-  return resolved;
+  fs.accessSync(normalized, fs.constants.R_OK | fs.constants.W_OK);
+  return realPath;
 }
 
 function saveSettings(next) {
@@ -121,11 +152,16 @@ async function transmission(args) {
   return stdout;
 }
 
-async function requestWithHermes(prompt) {
-  if (typeof prompt !== 'string' || !prompt.trim()) throw new Error('다운로드 요청을 입력하세요.');
-  const normalized = prompt.trim();
-  if (normalized.length > 500) throw new Error('요청은 500자 이하로 입력하세요.');
-  if (!fs.existsSync(HERMES_BIN)) throw new Error('Hermes 실행 파일을 찾을 수 없습니다.');
+function executeHermesJob(requestJob) {
+  const normalized = requestJob.output || '';
+  if (!normalized) throw new Error('재시작할 Hermes 요청 내용이 없습니다.');
+  requestJob.status = 'discovering';
+  requestJob.progress = 5;
+  requestJob.speed = '콘텐츠 검색·선정 중';
+  requestJob.eta = '';
+  requestJob.error = '';
+  requestJob.updatedAt = Date.now();
+  activeHermesRequests.add(requestJob.id);
   const instruction = [
     '사용자의 다운로드 요청을 처리하라.',
     '반드시 nexus-downloads skill과 nexus_download 도구를 사용하라.',
@@ -133,14 +169,49 @@ async function requestWithHermes(prompt) {
     '다운로드와 상태 확인 외의 작업은 하지 마라.',
     `사용자 요청: ${normalized}`,
   ].join('\n');
-  const { stdout } = await execFileAsync(HERMES_BIN, [
-    '--in', path.join(__dirname, '..'),
-    '--oneshot', instruction,
-    '--skills', 'nexus-downloads',
-    '--toolsets', 'web,nexus_downloads',
-    '--reasoning', 'low',
-  ], { timeout: 180000, maxBuffer: 1024 * 1024 });
-  return { message: stdout.trim() };
+  execFileAsync(HERMES_BIN, [
+      '--in', path.join(__dirname, '..'),
+      '--oneshot', instruction,
+      '--provider', HERMES_PROVIDER,
+      '--model', HERMES_MODEL,
+      '--skills', 'nexus-downloads',
+      '--toolsets', 'web,nexus_downloads',
+      '--reasoning', 'low',
+    ], { timeout: HERMES_DOWNLOAD_TIMEOUT_MS, maxBuffer: 1024 * 1024 })
+    .then(({ stdout }) => {
+      requestJob.status = 'completed';
+      requestJob.progress = 100;
+      requestJob.speed = '큐 등록 완료';
+      requestJob.output = stdout.trim() || normalized;
+      requestJob.updatedAt = Date.now();
+    })
+    .catch((error) => {
+      const detail = String(error.stderr || error.stdout || error.message || '')
+        .replace(/(?:sk-|fc-)[A-Za-z0-9_-]{12,}/g, '[redacted]')
+        .trim()
+        .slice(-1200);
+      requestJob.status = 'failed';
+      requestJob.error = `Hermes 요청 실패 (${HERMES_PROVIDER}/${HERMES_MODEL})${detail ? `: ${detail}` : ''}`;
+      requestJob.updatedAt = Date.now();
+    })
+    .finally(() => activeHermesRequests.delete(requestJob.id));
+}
+
+async function requestWithHermes(prompt) {
+  if (typeof prompt !== 'string' || !prompt.trim()) throw new Error('다운로드 요청을 입력하세요.');
+  const normalized = prompt.trim();
+  if (normalized.length > 500) throw new Error('요청은 500자 이하로 입력하세요.');
+  if (!fs.existsSync(HERMES_BIN)) throw new Error('Hermes 실행 파일을 찾을 수 없습니다.');
+  const requestId = `hermes-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const requestJob = {
+    id: requestId, kind: 'hermes-request', origin: 'hermes', url: '', quality: '',
+    status: 'discovering', progress: 5, speed: '콘텐츠 검색·선정 중', eta: '',
+    output: normalized, outputPath: '', error: '',
+    createdAt: Date.now(), updatedAt: Date.now(), process: null,
+  };
+  jobs.set(requestId, requestJob);
+  executeHermesJob(requestJob);
+  return { message: 'Hermes가 백그라운드에서 콘텐츠를 검색하고 있습니다.', requestId };
 }
 
 async function getTransmission() {
@@ -185,11 +256,22 @@ function deleteTrackedFile(job) {
 }
 
 function listYoutubeJobs() {
-  return Array.from(jobs.values()).map(publicJob).sort((a, b) => b.createdAt - a.createdAt);
+  const priority = { running: 0, discovering: 1, queued: 2, paused: 3, failed: 4, cancelled: 5, completed: 6 };
+  return Array.from(jobs.values()).map(publicJob).sort((a, b) => {
+    const statusOrder = (priority[a.status] ?? 99) - (priority[b.status] ?? 99);
+    return statusOrder || b.createdAt - a.createdAt;
+  });
 }
 
 function qualityOptions() {
   return Object.entries(YOUTUBE_QUALITY_PRESETS).map(([id, preset]) => ({ id, label: preset.label }));
+}
+
+function parseYoutubeProgressLine(line) {
+  const clean = line.replace(/\x1b\[[0-9;]*m/g, '');
+  const match = clean.match(/^download:\s*([\d.]+)%\|([^|]*)\|([^|]*)/);
+  if (!match) return null;
+  return { progress: Number(match[1]), speed: match[2].trim(), eta: match[3].trim() };
 }
 
 function launchYoutube(job) {
@@ -200,9 +282,11 @@ function launchYoutube(job) {
   if (!commandExists('yt-dlp')) throw new Error('yt-dlp가 설치되지 않았습니다. 설치 후 다시 시도하세요.');
   const args = [
     '--newline',
+    '--no-colors',
+    '--progress-delta', '0.5',
     '--no-playlist',
     '--windows-filenames',
-    '--trim-filenames', '180',
+    '--trim-filenames', '70',
     '--js-runtimes', 'node:/usr/bin/node',
     '--remote-components', 'ejs:github',
     ...preset.args,
@@ -212,14 +296,25 @@ function launchYoutube(job) {
     '-o', '%(title)s [%(id)s].%(ext)s',
     url,
   ];
-  const child = spawn('yt-dlp', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn('yt-dlp', args, {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env, PYTHONUNBUFFERED: '1' },
+  });
   job.process = child;
   job.status = 'running';
-  const consume = (buffer, isError = false) => {
-    for (const line of buffer.toString().split('\n')) {
-      const match = line.match(/^download:\s*([\d.]+)%\|([^|]*)\|([^|]*)/);
-      if (match) {
-        job.progress = Number(match[1]); job.speed = match[2].trim(); job.eta = match[3].trim();
+  const pending = { stdout: '', stderr: '' };
+  const consume = (buffer, isError = false, flush = false) => {
+    const channel = isError ? 'stderr' : 'stdout';
+    pending[channel] += buffer.toString();
+    const lines = pending[channel].split(/[\r\n]+/);
+    const tail = lines.pop() || '';
+    pending[channel] = flush ? '' : tail;
+    if (flush && tail) lines.push(tail);
+    for (const rawLine of lines) {
+      const line = rawLine.replace(/\x1b\[[0-9;]*m/g, '');
+      const progress = parseYoutubeProgressLine(line);
+      if (progress) {
+        Object.assign(job, progress);
       } else if (line.startsWith('filepath:')) {
         job.outputPath = line.slice('filepath:'.length).trim();
       } else if (line.trim()) {
@@ -233,6 +328,8 @@ function launchYoutube(job) {
   child.stderr.on('data', (data) => consume(data, true));
   child.on('error', (error) => { job.status = 'failed'; job.error = error.message; job.updatedAt = Date.now(); });
   child.on('close', (code) => {
+    consume('', false, true);
+    consume('', true, true);
     job.status = code === 0 ? 'completed' : (job.status === 'cancelled' ? 'cancelled' : 'failed');
     if (code === 0) { job.progress = 100; job.error = ''; }
     job.updatedAt = Date.now();
@@ -253,11 +350,38 @@ function pumpYoutubeQueue() {
 function startYoutube(url, quality = '720p') {
   if (!commandExists('yt-dlp')) throw new Error('yt-dlp가 설치되지 않았습니다. 설치 후 다시 시도하세요.');
   if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) throw new Error('유효한 HTTP(S) 동영상 URL을 입력하세요.');
+  let host;
+  try { host = new URL(url).hostname.toLowerCase(); } catch { throw new Error('유효하지 않은 YouTube URL입니다.'); }
+  if (!['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be', 'www.youtu.be', 'youtube-nocookie.com', 'www.youtube-nocookie.com'].includes(host)) {
+    throw new Error('YouTube 주소만 다운로드할 수 있습니다.');
+  }
   if (!YOUTUBE_QUALITY_PRESETS[quality]) throw new Error('지원하지 않는 YouTube 화질입니다.');
   validateDownloadDir(readSettings().downloadDir);
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const job = { id, url, quality, status: 'queued', progress: 0, speed: '', eta: '', output: '', outputPath: '', error: '', createdAt: Date.now(), updatedAt: Date.now(), process: null };
+  const job = { id, kind: 'youtube', origin: activeHermesRequests.size > 0 ? 'hermes' : 'manual', url, quality, status: 'queued', progress: 0, speed: '', eta: '', output: '', outputPath: '', error: '', createdAt: Date.now(), updatedAt: Date.now(), process: null };
   jobs.set(id, job);
+  pumpYoutubeQueue();
+  return publicJob(job);
+}
+
+function retryYoutubeJob(job) {
+  if (['running', 'paused', 'discovering'].includes(job.status)) {
+    throw new Error(`현재 상태(${job.status})에서 작업을 재시작할 수 없습니다.`);
+  }
+  if (job.kind === 'hermes-request') {
+    executeHermesJob(job);
+    return publicJob(job);
+  }
+  if (!job.url) {
+    throw new Error('재시작할 동영상 URL이 없습니다.');
+  }
+  job.status = 'queued';
+  job.progress = 0;
+  job.speed = '';
+  job.eta = '';
+  job.error = '';
+  job.outputPath = '';
+  job.updatedAt = Date.now();
   pumpYoutubeQueue();
   return publicJob(job);
 }
@@ -274,6 +398,8 @@ function youtubeAction(id, action) {
     job.status = 'cancelled'; job.process.kill('SIGTERM');
   } else if (action === 'cancel' && job.status === 'queued') {
     job.status = 'cancelled'; job.updatedAt = Date.now(); pumpYoutubeQueue();
+  } else if ((action === 'retry' || action === 'restart') && !['running', 'paused'].includes(job.status)) {
+    return retryYoutubeJob(job);
   } else if (action === 'remove' && !['running', 'paused'].includes(job.status)) {
     jobs.delete(id); return { id, removed: true };
   } else if (action === 'delete' && !['running', 'paused'].includes(job.status)) {
@@ -282,6 +408,30 @@ function youtubeAction(id, action) {
     throw new Error(`현재 상태(${job.status})에서 ${action} 작업을 수행할 수 없습니다.`);
   }
   return publicJob(job);
+}
+
+function clearFailedYoutubeJobs() {
+  const removedIds = [];
+  for (const [id, job] of jobs) {
+    if (job.status !== 'failed') continue;
+    jobs.delete(id);
+    removedIds.push(id);
+  }
+  return { removed: removedIds.length, ids: removedIds };
+}
+
+function retryFailedYoutubeJobs() {
+  const retriedIds = [];
+  for (const [id, job] of jobs) {
+    if (job.status !== 'failed') continue;
+    try {
+      retryYoutubeJob(job);
+      retriedIds.push(id);
+    } catch {
+      // ignore
+    }
+  }
+  return { retried: retriedIds.length, ids: retriedIds };
 }
 
 function getStatus() {
@@ -316,4 +466,4 @@ function hydrateCompletedFiles() {
 
 hydrateCompletedFiles();
 
-module.exports = { getStatus, saveSettings, getTransmission, addTorrent, torrentAction, listYoutubeJobs, startYoutube, youtubeAction, requestWithHermes, qualityOptions };
+module.exports = { getStatus, saveSettings, getTransmission, addTorrent, torrentAction, listYoutubeJobs, startYoutube, youtubeAction, clearFailedYoutubeJobs, retryFailedYoutubeJobs, retryYoutubeJob, requestWithHermes, qualityOptions, parseYoutubeProgressLine };
