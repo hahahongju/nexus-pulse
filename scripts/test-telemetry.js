@@ -209,8 +209,10 @@ async function runTests() {
     assert(
       pinLogin.status === 200 &&
       pinLogin.data.data.sessionToken &&
-      pinLogin.data.data.user.isMaster === false,
-      'POST /api/security/login authenticates with default PIN and creates 30-day session'
+      pinLogin.data.data.user.isMaster === false &&
+      pinLogin.data.data.expiresAt > Date.now() + 23 * 60 * 60 * 1000 &&
+      pinLogin.data.data.expiresAt <= Date.now() + 24 * 60 * 60 * 1000,
+      'POST /api/security/login authenticates with default PIN and creates 24-hour session'
     );
     const sessionToken = pinLogin.data.data.sessionToken;
     const sessionHeaders = { 'Authorization': `Bearer ${sessionToken}` };

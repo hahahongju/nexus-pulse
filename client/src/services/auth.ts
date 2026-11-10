@@ -109,7 +109,7 @@ class AuthService {
   }
 
   /**
-   * Logs in using user-friendly PIN or Password, receiving a 30-day session token
+   * Logs in using user-friendly PIN or Password, receiving a 24-hour session token
    */
   public async loginWithPin(
     pin: string, 

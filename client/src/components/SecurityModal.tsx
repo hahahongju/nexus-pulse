@@ -38,7 +38,6 @@ interface SecurityModalProps {
 export const SecurityModal: React.FC<SecurityModalProps> = ({ isOpen, onClose, initialTab }) => {
   // Authentication & Session State
   const [pinInput, setPinInput] = useState('');
-  const [rememberMe, setRememberMe] = useState(true);
   const [useTextInput, setUseTextInput] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -159,7 +158,7 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({ isOpen, onClose, i
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, pinInput, activeTab, is2FAPending, rememberMe]);
+  }, [isOpen, pinInput, activeTab, is2FAPending]);
 
   const refreshStatus = async () => {
     try {
@@ -215,7 +214,7 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({ isOpen, onClose, i
     setSuccessMsg(null);
     sound.playClick();
 
-    const result = await authService.loginWithPin(candidate, rememberMe);
+    const result = await authService.loginWithPin(candidate);
     setLoading(false);
 
     if (result.success) {
@@ -229,7 +228,7 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({ isOpen, onClose, i
 
       sound.playTabSwitch();
       setPinInput('');
-      setSuccessMsg('환영합니다! 관리자 세션이 30일간 안전하게 유지됩니다.');
+      setSuccessMsg('환영합니다! 관리자 세션은 24시간 유지됩니다.');
       const token = authService.getToken();
       if (token) wsClient.authenticate(token);
       refreshStatus();
@@ -280,6 +279,15 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({ isOpen, onClose, i
       sound.playAlertWarning();
       setErrorMsg(result.error || '인증 코드가 올바르지 않습니다.');
     }
+  };
+
+  const handleOtpDigitPress = (digit: string) => {
+    if (loading || useBackupCode || totpInput.length >= 6) return;
+    sound.playClick();
+    const next = `${totpInput}${digit}`;
+    setTotpInput(next);
+    setErrorMsg(null);
+    if (next.length === 6) void handle2FASubmit(undefined, next);
   };
 
   // 2FA Setup Flow
@@ -622,6 +630,47 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({ isOpen, onClose, i
                 </span>
               </div>
 
+              {!useBackupCode && (
+                <div className="grid grid-cols-3 gap-2" aria-label="OTP 숫자 키패드">
+                  {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
+                    <button
+                      key={digit}
+                      type="button"
+                      disabled={loading}
+                      onClick={() => handleOtpDigitPress(digit)}
+                      className="h-11 rounded-xl bg-[var(--bg-surface)]/60 text-base font-semibold text-[var(--text-main)] transition-colors hover:bg-[var(--bg-surface-hover)] disabled:opacity-50"
+                    >
+                      {digit}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    disabled={loading || !totpInput}
+                    onClick={() => { sound.playClick(); setTotpInput(''); setErrorMsg(null); }}
+                    className="h-11 rounded-xl bg-[var(--bg-surface)]/60 text-[10px] font-semibold text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-surface-hover)] disabled:opacity-40"
+                  >
+                    전체 삭제
+                  </button>
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => handleOtpDigitPress('0')}
+                    className="h-11 rounded-xl bg-[var(--bg-surface)]/60 text-base font-semibold text-[var(--text-main)] transition-colors hover:bg-[var(--bg-surface-hover)] disabled:opacity-50"
+                  >
+                    0
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="마지막 숫자 지우기"
+                    disabled={loading || !totpInput}
+                    onClick={() => { sound.playClick(); setTotpInput((value) => value.slice(0, -1)); setErrorMsg(null); }}
+                    className="flex h-11 items-center justify-center rounded-xl bg-[var(--bg-surface)]/60 text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-surface-hover)] disabled:opacity-40"
+                  >
+                    <Delete className="h-5 w-5" />
+                  </button>
+                </div>
+              )}
+
               <div className="flex items-center justify-between text-[11px] px-1">
                 <button
                   type="button"
@@ -757,17 +806,9 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({ isOpen, onClose, i
                 </div>
               )}
 
-              {/* Remember Me & Input Mode Toggle */}
+              {/* Session policy & Input Mode Toggle */}
               <div className="flex items-center justify-between pt-1 px-1 text-[11px]">
-                <label className="flex items-center gap-2 cursor-pointer select-none text-[var(--text-main)]">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="rounded border-[var(--border-color)] text-[var(--accent-primary)] focus:ring-0"
-                  />
-                  <span>이 기기 30일간 로그인 유지</span>
-                </label>
+                <span className="text-[var(--text-main)]">로그인 세션 24시간 유지</span>
 
                 <button
                   type="button"

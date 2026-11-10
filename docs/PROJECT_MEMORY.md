@@ -7,7 +7,7 @@
 ## 1. 📌 프로젝트 개요 및 핵심 메타데이터
 
 - **프로젝트 명**: NexusPulse (넥서스펄스) - Next-Gen Server Telemetry & Operations OS
-- **로컬 디렉토리**: `/mnt/workspace/nexus-pulse/`
+- **로컬 디렉토리**: `/mnt/workspace/server-management/nexus-pulse/`
 - **GitHub 저장소**: [https://github.com/hahahongju/nexus-pulse](https://github.com/hahahongju/nexus-pulse)
 - **기본 서비스 포트**: `4500` (HTTP & WebSocket 통합)
 - **주요 기술 스택**:
@@ -106,19 +106,19 @@ nexus-pulse/
 
 ```bash
 # 1. 원클릭 전체 빌드 및 실행
-bash /mnt/workspace/nexus-pulse/start.sh
+bash /mnt/workspace/server-management/nexus-pulse/start.sh
 
 # 2. 백엔드 서버 단독 실행
-cd /mnt/workspace/nexus-pulse && node server/index.js
+cd /mnt/workspace/server-management/nexus-pulse && node server/index.js
 
 # 3. 프론트엔드 빌드 (TypeScript + Vite)
-npm --prefix /mnt/workspace/nexus-pulse/client run build
+npm --prefix /mnt/workspace/server-management/nexus-pulse/client run build
 
 # 4. E2E 전체 스택 자동 검증 테스트
-node /mnt/workspace/nexus-pulse/scripts/verify-full-stack.js
+node /mnt/workspace/server-management/nexus-pulse/scripts/verify-full-stack.js
 
 # 5. systemd 서비스 등록 및 자동 시작
-sudo cp /mnt/workspace/nexus-pulse/nexuspulse.service /etc/systemd/system/
+sudo cp /mnt/workspace/server-management/nexus-pulse/nexuspulse.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now nexuspulse
 ```

@@ -26,7 +26,6 @@ interface LoginGateProps {
 
 export const LoginGate: React.FC<LoginGateProps> = ({ onLoginSuccess }) => {
   const [pinInput, setPinInput] = useState('');
-  const [rememberMe, setRememberMe] = useState(true);
   const [useTextInput, setUseTextInput] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -94,7 +93,7 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onLoginSuccess }) => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [pinInput, is2FAPending, useTextInput, rememberMe]);
+  }, [pinInput, is2FAPending, useTextInput]);
 
   const handleDigitPress = (digit: string) => {
     if (pinInput.length >= 16) return;
@@ -127,7 +126,7 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onLoginSuccess }) => {
     setSuccessMsg(null);
     sound.playClick();
 
-    const result = await authService.loginWithPin(candidate, rememberMe);
+    const result = await authService.loginWithPin(candidate);
     setLoading(false);
 
     if (result.success) {
@@ -191,6 +190,15 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onLoginSuccess }) => {
       sound.playAlertWarning();
       setErrorMsg(result.error || '인증 코드가 올바르지 않습니다.');
     }
+  };
+
+  const handleOtpDigitPress = (digit: string) => {
+    if (loading || useBackupCode || totpInput.length >= 6) return;
+    sound.playClick();
+    const next = `${totpInput}${digit}`;
+    setTotpInput(next);
+    setErrorMsg(null);
+    if (next.length === 6) void handle2FASubmit(undefined, next);
   };
 
   const isInitialPin = secStatus?.pin?.isInitialPin;
@@ -304,6 +312,47 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onLoginSuccess }) => {
                   {useBackupCode ? '비상 복구 코드 (8자리)' : '30초마다 갱신되는 6자리 번호'}
                 </span>
               </div>
+
+              {!useBackupCode && (
+                <div className="grid grid-cols-3 gap-2" aria-label="OTP 숫자 키패드">
+                  {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
+                    <button
+                      key={digit}
+                      type="button"
+                      disabled={loading}
+                      onClick={() => handleOtpDigitPress(digit)}
+                      className="h-12 rounded-xl bg-[var(--bg-primary)]/50 text-lg font-semibold text-[var(--text-main)] transition-colors hover:bg-[var(--bg-surface-hover)] disabled:opacity-50"
+                    >
+                      {digit}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    disabled={loading || !totpInput}
+                    onClick={() => { sound.playClick(); setTotpInput(''); setErrorMsg(null); }}
+                    className="h-12 rounded-xl bg-[var(--bg-primary)]/50 text-xs font-semibold text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-surface-hover)] disabled:opacity-40"
+                  >
+                    전체 삭제
+                  </button>
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => handleOtpDigitPress('0')}
+                    className="h-12 rounded-xl bg-[var(--bg-primary)]/50 text-lg font-semibold text-[var(--text-main)] transition-colors hover:bg-[var(--bg-surface-hover)] disabled:opacity-50"
+                  >
+                    0
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="마지막 숫자 지우기"
+                    disabled={loading || !totpInput}
+                    onClick={() => { sound.playClick(); setTotpInput((value) => value.slice(0, -1)); setErrorMsg(null); }}
+                    className="flex h-12 items-center justify-center rounded-xl bg-[var(--bg-primary)]/50 text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-surface-hover)] disabled:opacity-40"
+                  >
+                    <Delete className="h-5 w-5" />
+                  </button>
+                </div>
+              )}
 
               <div className="flex items-center justify-between text-xs px-1">
                 <button
@@ -438,17 +487,9 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onLoginSuccess }) => {
                 </div>
               )}
 
-              {/* Remember Me & Input Mode Toggle */}
+              {/* Session policy & Input Mode Toggle */}
               <div className="flex items-center justify-between px-1 text-[11px]">
-                <label className="flex items-center gap-2 cursor-pointer select-none text-[var(--text-main)]">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="rounded border-[var(--border-color)] text-[var(--accent-primary)] focus:ring-0"
-                  />
-                  <span>이 기기 30일간 로그인 유지</span>
-                </label>
+                <span className="text-[var(--text-main)]">로그인 세션 24시간 유지</span>
 
                 <button
                   type="button"

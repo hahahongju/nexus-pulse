@@ -109,6 +109,10 @@ npm run dev:client
 | `/api/system/processes` | GET | 프로세스 목록 (`?sort=cpu&limit=50&search=...`) |
 | `/api/system/processes/kill`| POST | 프로세스 종료 (`{ pid, signal }`) |
 | `/api/system/ports` | GET | 리스닝 중인 네트워크 포트 |
+| `/api/network/wol` | GET | 저장된 Wake-on-LAN 장치 목록 |
+| `/api/network/wol/devices` | POST | WOL 장치 등록 |
+| `/api/network/wol/devices/:id` | DELETE | WOL 장치 삭제 |
+| `/api/network/wol/devices/:id/wake` | POST | 매직 패킷 3회 전송 |
 | `/api/containers` | GET | Docker 엔진 사양 및 컨테이너별 실시간 메트릭 |
 | `/api/containers/:id/:action` | POST | 컨테이너 라이프사이클 제어 (`start`/`stop`/`restart`/`pause`) |
 | `/api/containers/:id/logs` | GET | 컨테이너 실시간 로그 스트림 (`?tail=100`) |

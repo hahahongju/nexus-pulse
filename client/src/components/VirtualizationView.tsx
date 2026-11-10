@@ -17,7 +17,8 @@ import {
   RefreshCw, 
   AlertTriangle,
   Monitor,
-  HardDrive
+  HardDrive,
+  ExternalLink
 } from 'lucide-react';
 import { VirtualizationInfo, VirtualMachine } from '../types/telemetry';
 import { sound } from '../services/sound';
@@ -42,6 +43,12 @@ export const VirtualizationView: React.FC<VirtualizationViewProps> = ({ virt, on
   }
 
   const isBareMetal = virt.role === 'HOST';
+
+  const getCockpitConsoleUrl = (vmName: string) => {
+    const host = window.location.hostname;
+    const params = new URLSearchParams({ name: vmName, connection: 'system' });
+    return `https://${host}:9090/machines#/vm/vnc?${params.toString()}`;
+  };
 
   const handleVmAction = async (vmName: string, action: 'start' | 'shutdown' | 'destroy' | 'reboot' | 'pause' | 'resume' | 'reset') => {
     setActionLoading(`${vmName}-${action}`);
@@ -257,7 +264,7 @@ export const VirtualizationView: React.FC<VirtualizationViewProps> = ({ virt, on
 
                       {/* Action Controls */}
                       <td className="py-3 px-3 text-center">
-                        <div className="flex items-center justify-center space-x-1.5">
+                        <div className="flex flex-wrap items-center justify-center gap-1.5">
                           
                           {/* START VM (if shut off) */}
                           {!isRunning && (
@@ -276,6 +283,20 @@ export const VirtualizationView: React.FC<VirtualizationViewProps> = ({ virt, on
                           {/* RUNNING ACTIONS */}
                           {isRunning && (
                             <>
+                              <Tooltip content="Cockpit에서 VM 화면 열기">
+                                <a
+                                  href={getCockpitConsoleUrl(vm.name)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={() => sound.playClick()}
+                                  className="min-h-9 px-3 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/50 text-cyan-200 text-xs font-bold transition-colors flex items-center gap-1.5"
+                                >
+                                  <Monitor className="w-3.5 h-3.5" />
+                                  <span>콘솔 접속</span>
+                                  <ExternalLink className="w-3 h-3 text-cyan-400" />
+                                </a>
+                              </Tooltip>
+
                               {/* Graceful Shutdown */}
                               <Tooltip content="ACPI 정상 종료 (Graceful Shutdown)">
                                 <button

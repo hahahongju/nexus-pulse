@@ -5,8 +5,8 @@ After=network.target
 [Service]
 Type=simple
 User=hongju
-WorkingDirectory=/mnt/workspace/nexus-pulse
-ExecStart=/usr/bin/node /mnt/workspace/nexus-pulse/server/index.js
+WorkingDirectory=/mnt/workspace/server-management/nexus-pulse
+ExecStart=/usr/bin/node /mnt/workspace/server-management/nexus-pulse/server/index.js
 Restart=always
 RestartSec=5
 Environment=NODE_ENV=production
@@ -16,7 +16,10 @@ PrivateTmp=true
 ProtectHome=read-only
 ProtectSystem=full
 UMask=0077
-ReadWritePaths=/mnt/storage /mnt/workspace/nexus-pulse/data /home/hongju/.hermes /home/hongju/.cache
+Environment=HERMES_BIN=/mnt/hermes/engine/hermes-agent/venv/bin/hermes
+Environment=HERMES_HOME=/mnt/hermes/engine
+Environment=PATH=/mnt/hermes/engine/hermes-agent/venv/bin:/home/hongju/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ReadWritePaths=/mnt/storage /mnt/workspace/server-management/nexus-pulse/data /mnt/hermes/engine /home/hongju/.cache
 
 [Install]
 WantedBy=multi-user.target

@@ -1479,10 +1479,10 @@ class TelemetryEngine {
     try {
       let virshOut = '';
       try {
-        virshOut = execFileSync('virsh', ['-c', 'qemu:///system', 'list', '--all'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+        virshOut = execFileSync('virsh', ['-c', 'qemu:///system', 'list', '--all'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 1500 }).trim();
       } catch (e) {
         try {
-          virshOut = execFileSync('virsh', ['list', '--all'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+          virshOut = execFileSync('virsh', ['list', '--all'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 1500 }).trim();
         } catch (e2) {}
       }
 
@@ -1568,10 +1568,10 @@ class TelemetryEngine {
             try {
               let infoOut = '';
               try {
-                infoOut = execFileSync('virsh', ['-c', 'qemu:///system', 'dominfo', name], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+                infoOut = execFileSync('virsh', ['-c', 'qemu:///system', 'dominfo', name], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 1500 });
               } catch (e1) {
                 try {
-                  infoOut = execFileSync('virsh', ['dominfo', name], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+                  infoOut = execFileSync('virsh', ['dominfo', name], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 1500 });
                 } catch (e2) {}
               }
               const vcpuM = infoOut.match(/CPU\(s\):\s+([0-9]+)/);

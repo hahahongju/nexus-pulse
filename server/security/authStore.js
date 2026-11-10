@@ -7,6 +7,16 @@ const DATA_DIR = process.env.NEXUSPULSE_CONFIG_DIR || path.join(__dirname, '..',
 const SECURITY_DIR = path.join(DATA_DIR, 'security');
 const INDEX_DIR = path.join(SECURITY_DIR, 'auth-index');
 const TOKEN_FILE = path.join(SECURITY_DIR, 'admin-token.env');
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+
+function isTokenExpired(token, now = Date.now()) {
+  if (!token) return true;
+  const configuredExpiry = token.expiresAt || Infinity;
+  const sessionExpiry = token.kind === 'session' && token.createdAt
+    ? token.createdAt + SESSION_TTL_MS
+    : Infinity;
+  return now > Math.min(configuredExpiry, sessionExpiry);
+}
 
 // 64-dimensional deterministic feature vector generator from token hash
 function hashToVector(str, dim = 64) {
@@ -374,11 +384,10 @@ class AuthStore {
     return { success: true };
   }
 
-  async createSession({ deviceName = 'Browser Client', rememberMe = true } = {}) {
+  async createSession({ deviceName = 'Browser Client' } = {}) {
     if (!this.initialized) await this.init();
     const rawToken = 'sess_' + crypto.randomBytes(32).toString('base64url');
-    const expiresInDays = rememberMe ? 30 : 1;
-    const expiresAt = Date.now() + expiresInDays * 24 * 60 * 60 * 1000;
+    const expiresAt = Date.now() + SESSION_TTL_MS;
 
     const record = await this.registerToken(rawToken, {
       name: deviceName,
@@ -563,7 +572,7 @@ class AuthStore {
     let cached = this.activeTokens.get(tokenHash);
     if (cached && !cached.kind) return null;
     if (cached) {
-      if (cached.expiresAt && Date.now() > cached.expiresAt) {
+      if (isTokenExpired(cached)) {
         return null; // Expired
       }
       cached.lastUsedAt = Date.now();
@@ -576,7 +585,7 @@ class AuthStore {
       cached = this.activeTokens.get(tokenHash);
       if (cached) {
         if (!cached.kind) return null;
-        if (cached.expiresAt && Date.now() > cached.expiresAt) {
+        if (isTokenExpired(cached)) {
           return null;
         }
         cached.lastUsedAt = Date.now();
@@ -591,7 +600,7 @@ class AuthStore {
       if (results.length > 0 && results[0].score > 0.9999) {
         const item = results[0].item;
         if (item.metadata?.tokenHash === tokenHash && item.metadata.kind) {
-          if (item.metadata.expiresAt && Date.now() > item.metadata.expiresAt) {
+          if (isTokenExpired(item.metadata)) {
             return null;
           }
           this.activeTokens.set(tokenHash, { id: item.id, ...item.metadata });

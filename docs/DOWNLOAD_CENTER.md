@@ -20,6 +20,8 @@ Browser -> NexusPulse API/UI -> Transmission RPC -> transmission-daemon
 - `yt-dlp` 단일 URL 다운로드, 진행률/속도/ETA 표시, 실패 메시지 표시
 - `yt-dlp` 출력을 비버퍼링하고 줄 단위로 누적 파싱해 장시간 작업도 진행률이 실시간 갱신됨
 - 실패한 YouTube 작업을 항목별로 다시 시작/제거하거나 `실패 모두 재시작` / `실패 모두 정리`로 일괄 제어
+- 일반 파일·YouTube 작업을 큐에서만 제거하거나, 실행을 중단하고 해당 작업의 임시 파일과 결과 파일까지 삭제
+- YouTube 임시 파일은 작업별 `.nexuspulse-temp/<작업 ID>` 폴더에 분리하여 삭제 범위를 제한
 - YouTube Pipeline은 실행 중 작업을 맨 위에 표시하고 탐색 중, 대기, 일시정지, 실패 순으로 정렬
 - YouTube JavaScript challenge 처리를 위한 Node runtime과 공식 `yt-dlp/ejs` solver 사용
 - 13인치 이하 태블릿 기본 프리셋: 최대 720p, H.264 영상, M4A 오디오, MP4 출력
@@ -28,6 +30,10 @@ Browser -> NexusPulse API/UI -> Transmission RPC -> transmission-daemon
 - YouTube 작업 동시 실행 기본값 2개 (`YOUTUBE_CONCURRENCY`로 변경 가능)
 - 완료 작업은 큐 화면에서 자동으로 숨기고 MP4 파일만 저장 폴더에 유지
 - 웹 자연어 요청: 제한된 Hermes(`web,nexus_downloads`)를 통해 검색 후 큐 등록
+- Hermes 요청별 대화 기록을 보존하며 같은 작업에서 조건 수정, 확인 답변, 재검색을 계속 진행
+- 공식 파일 부재나 버전·언어·아키텍처가 불명확할 때 임의 대체 파일을 받지 않고 사용자에게 확인 질문
+- Hermes 대화는 `data/hermes-conversations.json`에 저장되어 서비스 재시작 후에도 복원
+- HTML 안내 페이지를 ISO/설치 파일 다운로드 완료로 오인하지 않도록 응답 콘텐츠 형식 검증
 - Hermes의 콘텐츠 검색·선정 단계부터 작업을 표시하고, 등록된 영상은 `HERMES` 출처와 함께 기존 YouTube Pipeline에서 계속 추적
 - Hermes 요청 API는 즉시 작업 ID를 반환하고 검색은 백그라운드에서 기본 15분까지 계속 수행
 - Hermes Downloader는 전역 provider 장애의 영향을 피하도록 기본적으로 검증된 `custom:omniroute-fast/auto/pro-fast`를 사용
@@ -66,12 +72,33 @@ sudo apt install yt-dlp ffmpeg
 
 Remote GUI는 Transmission daemon RPC에 직접 연결한다. NexusPulse가 RPC 프로토콜을 대체하지 않으므로 웹 화면과 Remote GUI가 같은 큐를 본다. RPC 포트는 인터넷에 공개하지 말고 LAN/Tailscale 또는 SSH 터널에서만 접근한다.
 
+#### 현재 서버 복구 설정 (2026-10-23)
+
+서버에 `transmission-remote`만 설치되어 있고 daemon이 없어 `연결 끊김`이 발생했다. Ubuntu 저장소의 `transmission-daemon` 패키지를 사용자 경로 `~/.local/lib/transmission`에 추출하여 설치했다. 시스템 패키지로 등록되지 않으므로 daemon 업데이트는 해당 경로의 패키지도 별도로 갱신해야 한다.
+
+- 실행 서비스: `systemctl --user status nexuspulse-transmission.service`
+- 서비스 파일: `~/.config/systemd/user/nexuspulse-transmission.service`
+- 상태/큐 저장: `~/.config/transmission-daemon`
+- RPC: `127.0.0.1:9091` (로컬 접근만 허용, 외부 GUI는 SSH 터널 사용)
+- 다운로드 경로: `/mnt/work/downloads`, 시작 전에 `/mnt/work` 마운트 확인
+- 사용자 서비스 자동 시작 활성화, `myadmin`의 linger 활성화 확인
+- 연결 점검: `transmission-remote -l`
+
+토렌트 화면은 다른 다운로드 API와 독립적으로 조회를 마친 뒤 3초마다 다시 연결을 시도한다. 응답이 없는 요청은 10초 후 취소하며, 네트워크 복구 또는 탭 복귀 시 즉시 조회한다. 연결 실패 시 `재연결 대기 중`을 표시하고 서비스가 나중에 실행되면 새로고침 없이 `연결됨`으로 복구된다.
+
+사용자 서비스는 `Restart=always`, `RestartSec=5`, `StartLimitIntervalSec=0`으로 설정하여 저장 장치가 늦게 마운트되거나 프로세스가 종료되어도 재시도를 지속한다. 관리자가 명시적으로 `systemctl --user stop`한 경우는 자동 재시작하지 않는다.
+
+브라우저 회귀 검사: `node scripts/test-torrent-reconnect.js` (Puppeteer Chrome 필요). 늦은 시작, 다른 API 장애, 네트워크 실패, 응답 시간 초과 후 자동 복구를 검증한다.
+
+로그인 세션 환경변수가 없는 셸에서는 `XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus`를 지정하여 사용자 서비스를 관리한다.
+
 ## API
 
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/api/downloads/status` | 도구, 설정, 마운트 상태 |
 | `POST` | `/api/downloads/request` | Hermes 자연어 다운로드 요청 |
+| `POST` | `/api/downloads/hermes/:id/messages` | 기존 Hermes 요청에 후속 메시지 전송 |
 | `PUT` | `/api/downloads/settings` | 기본 저장 경로 변경 |
 | `GET` | `/api/downloads/transmission` | Torrent 큐 조회 |
 | `POST` | `/api/downloads/transmission` | Magnet/torrent URL 추가 |

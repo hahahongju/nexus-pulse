@@ -136,13 +136,13 @@ export const MemoryStorageView: React.FC<MemoryStorageViewProps> = ({ memory, di
             {/* Disk IO Speedometer */}
             <div className="flex items-center space-x-2 text-xs font-mono bg-[var(--bg-primary)] px-2.5 py-1 rounded-md border border-[var(--border-color)]">
               <span className="flex items-center text-emerald-400 font-semibold tabular-nums">
-                <ArrowDownCircle className="w-3.5 h-3.5 mr-1" />
-                ↓ {formatSpeed(diskIO.rIO_sec)}
+                <ArrowUpCircle className="w-3.5 h-3.5 mr-1" />
+                ↑ {formatSpeed(diskIO.rIO_sec)}
               </span>
               <span className="text-zinc-600">/</span>
               <span className="flex items-center text-amber-400 font-semibold tabular-nums">
-                <ArrowUpCircle className="w-3.5 h-3.5 mr-1" />
-                ↑ {formatSpeed(diskIO.wIO_sec)}
+                <ArrowDownCircle className="w-3.5 h-3.5 mr-1" />
+                ↓ {formatSpeed(diskIO.wIO_sec)}
               </span>
             </div>
           </div>

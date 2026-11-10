@@ -29,3 +29,7 @@ data/downloads.json
 # OS files
 .DS_Store
 Thumbs.db
+
+# Runtime json data & backups
+data/*.json
+*.bak*

@@ -18,6 +18,7 @@ const express = require('express');
 const { WebSocketServer, WebSocket } = require('ws');
 const telemetry = require('./telemetry');
 const downloads = require('./downloadManager');
+const wol = require('./wolManager');
 const proxyGateway = require('./security/proxyGateway');
 const authStore = proxyGateway.authStore;
 
@@ -125,7 +126,7 @@ apiRouter.get('/security/status', (req, res) => {
 
 /**
  * POST /api/security/login
- * User-friendly PIN & Passphrase Login with Brute-Force Shield and 30-day Session creation
+ * User-friendly PIN & Passphrase Login with Brute-Force Shield and 24-hour Session creation
  */
 apiRouter.post('/security/login', async (req, res) => {
   if (authStore.get2FAConfig().unavailable) return res.status(503).json({ status: 'error', message: '인증 설정을 읽을 수 없습니다. 서버 설정을 확인하세요.' });
@@ -140,7 +141,7 @@ apiRouter.post('/security/login', async (req, res) => {
     });
   }
 
-  const { pin, password, token, deviceName = 'Browser Dashboard', rememberMe = true } = req.body || {};
+  const { pin, password, token, deviceName = 'Browser Dashboard' } = req.body || {};
   const candidate = pin || password || token;
 
   if (!candidate || typeof candidate !== 'string' || !candidate.trim()) {
@@ -171,7 +172,7 @@ apiRouter.post('/security/login', async (req, res) => {
 
   // If 2FA is enabled, issue temp token and request 2FA OTP code
   if (authStore.is2FAEnabled()) {
-    const tempToken = authStore.createTemp2FAToken({ deviceName, rememberMe: !!rememberMe });
+    const tempToken = authStore.createTemp2FAToken({ deviceName });
     return res.json({
       status: 'ok',
       require2FA: true,
@@ -181,7 +182,7 @@ apiRouter.post('/security/login', async (req, res) => {
   }
 
   // Generate trusted device session token stored in embedded vector DB
-  const session = await authStore.createSession({ deviceName, rememberMe: !!rememberMe });
+  const session = await authStore.createSession({ deviceName });
   const pinStatus = authStore.getPinStatus();
 
   res.json({
@@ -514,6 +515,25 @@ apiRouter.get('/system/ports', async (req, res) => {
   }
 });
 
+apiRouter.get('/network/wol', (req, res) => {
+  res.json({ status: 'ok', data: wol.listDevices() });
+});
+
+apiRouter.post('/network/wol/devices', proxyGateway.rateLimiter.middleware('wol_device', 20, 60000), (req, res) => {
+  try { res.status(201).json({ status: 'ok', data: wol.addDevice(req.body || {}) }); }
+  catch (err) { res.status(400).json({ status: 'error', message: err.message }); }
+});
+
+apiRouter.delete('/network/wol/devices/:id', (req, res) => {
+  try { res.json({ status: 'ok', data: wol.removeDevice(req.params.id) }); }
+  catch (err) { res.status(400).json({ status: 'error', message: err.message }); }
+});
+
+apiRouter.post('/network/wol/devices/:id/wake', proxyGateway.rateLimiter.middleware('wol_wake', 10, 60000), async (req, res) => {
+  try { res.json({ status: 'ok', data: await wol.wakeDevice(req.params.id) }); }
+  catch (err) { res.status(400).json({ status: 'error', message: err.message }); }
+});
+
 /**
  * POST /api/benchmark/start
  * Launch a safe CPU/RAM stress benchmark
@@ -706,6 +726,11 @@ apiRouter.post('/downloads/request', proxyGateway.rateLimiter.middleware('downlo
   catch (err) { res.status(400).json({ status: 'error', message: err.message }); }
 });
 
+apiRouter.post('/downloads/hermes/:id/messages', proxyGateway.rateLimiter.middleware('download_hermes_message', 20, 60000), async (req, res) => {
+  try { res.status(202).json({ status: 'ok', data: await downloads.continueHermesConversation(req.params.id, req.body?.message) }); }
+  catch (err) { res.status(400).json({ status: 'error', message: err.message }); }
+});
+
 apiRouter.put('/downloads/settings', (req, res) => {
   try { res.json({ status: 'ok', data: downloads.saveSettings(req.body || {}) }); }
   catch (err) { res.status(400).json({ status: 'error', message: err.message }); }
@@ -730,7 +755,12 @@ apiRouter.get('/downloads/youtube', (req, res) => {
 });
 
 apiRouter.post('/downloads/youtube', (req, res) => {
-  try { res.status(202).json({ status: 'ok', data: downloads.startYoutube(req.body?.url, req.body?.quality) }); }
+  try { res.status(202).json({ status: 'ok', data: downloads.startYoutube(req.body?.url, req.body?.quality, req.get('X-Nexus-Hermes-Request-ID')) }); }
+  catch (err) { res.status(400).json({ status: 'error', message: err.message }); }
+});
+
+apiRouter.post('/downloads/files', (req, res) => {
+  try { res.status(202).json({ status: 'ok', data: downloads.startFile(req.body?.url, req.body?.filename, req.get('X-Nexus-Hermes-Request-ID')) }); }
   catch (err) { res.status(400).json({ status: 'error', message: err.message }); }
 });
 
@@ -742,8 +772,8 @@ apiRouter.post('/downloads/youtube/failed/retry', (req, res) => {
   res.json({ status: 'ok', data: downloads.retryFailedYoutubeJobs() });
 });
 
-apiRouter.post('/downloads/youtube/:id/:action', (req, res) => {
-  try { res.json({ status: 'ok', data: downloads.youtubeAction(req.params.id, req.params.action) }); }
+apiRouter.post('/downloads/youtube/:id/:action', async (req, res) => {
+  try { res.json({ status: 'ok', data: await downloads.youtubeAction(req.params.id, req.params.action) }); }
   catch (err) { res.status(400).json({ status: 'error', message: err.message }); }
 });
 

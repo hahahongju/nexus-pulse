@@ -11,7 +11,7 @@
     "build:client": "npm --prefix client run build",
     "build": "npm run build:client",
     "setup:otp": "node scripts/setup-otp.js",
-    "test": "node scripts/test-telemetry.js && node scripts/test-downloads.js && node scripts/test-auth-recovery.js"
+    "test": "node scripts/test-telemetry.js && node scripts/test-downloads.js && node scripts/test-auth-recovery.js && node scripts/test-wol.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
