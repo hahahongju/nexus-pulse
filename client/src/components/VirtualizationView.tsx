@@ -204,6 +204,8 @@ export const VirtualizationView: React.FC<VirtualizationViewProps> = ({ virt, on
                 virt.vms.map((vm, idx) => {
                   const isRunning = vm.status === 'running';
                   const isPaused = vm.status === 'paused';
+                  const isInShutdown = vm.status === 'in shutdown';
+                  const isShutOff = !isRunning && !isPaused && !isInShutdown;
 
                   return (
                     <tr key={idx} className="hover:bg-purple-500/5 transition-colors group">
@@ -266,8 +268,8 @@ export const VirtualizationView: React.FC<VirtualizationViewProps> = ({ virt, on
                       <td className="py-3 px-3 text-center">
                         <div className="flex flex-wrap items-center justify-center gap-1.5">
                           
-                          {/* START VM (if shut off) */}
-                          {!isRunning && (
+                          {/* 1. SHUT OFF STATE: START BUTTON */}
+                          {isShutOff && (
                             <Tooltip content="가상머신 부팅 (Start VM)">
                               <button
                                 onClick={() => handleVmAction(vm.name, 'start')}
@@ -280,7 +282,50 @@ export const VirtualizationView: React.FC<VirtualizationViewProps> = ({ virt, on
                             </Tooltip>
                           )}
 
-                          {/* RUNNING ACTIONS */}
+                          {/* 2. PAUSED STATE: RESUME & FORCE DESTROY */}
+                          {isPaused && (
+                            <>
+                              <Tooltip content="가상머신 실행 재개 (Resume VM)">
+                                <button
+                                  onClick={() => handleVmAction(vm.name, 'resume')}
+                                  disabled={actionLoading === `${vm.name}-resume`}
+                                  className="px-2.5 py-1 rounded bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-800 text-xs font-bold transition-all flex items-center space-x-1"
+                                >
+                                  <PlayCircle className="w-3.5 h-3.5" />
+                                  <span>RESUME</span>
+                                </button>
+                              </Tooltip>
+                              <Tooltip content="강제 전원 차단 (Force Power Off)">
+                                <button
+                                  onClick={() => {
+                                    setDestroyModalVm(vm);
+                                    sound.playClick();
+                                  }}
+                                  className="p-1.5 rounded bg-rose-950/70 hover:bg-rose-900 text-rose-400 border border-rose-800 transition-colors"
+                                >
+                                  <Square className="w-3.5 h-3.5" />
+                                </button>
+                              </Tooltip>
+                            </>
+                          )}
+
+                          {/* 3. IN SHUTDOWN STATE: STATUS & FORCE DESTROY */}
+                          {isInShutdown && (
+                            <Tooltip content="강제 전원 차단 (Force Power Off)">
+                              <button
+                                onClick={() => {
+                                  setDestroyModalVm(vm);
+                                  sound.playClick();
+                                }}
+                                className="px-2.5 py-1 rounded bg-rose-950/70 hover:bg-rose-900 text-rose-400 border border-rose-800 text-xs font-bold transition-all flex items-center space-x-1"
+                              >
+                                <Square className="w-3.5 h-3.5" />
+                                <span>FORCE OFF</span>
+                              </button>
+                            </Tooltip>
+                          )}
+
+                          {/* 4. RUNNING ACTIONS */}
                           {isRunning && (
                             <>
                               <Tooltip content="Cockpit에서 VM 화면 열기">
@@ -319,28 +364,16 @@ export const VirtualizationView: React.FC<VirtualizationViewProps> = ({ virt, on
                                 </button>
                               </Tooltip>
 
-                              {/* Pause / Resume */}
-                              {isPaused ? (
-                                <Tooltip content="가상머신 실행 재개 (Resume VM)">
-                                  <button
-                                    onClick={() => handleVmAction(vm.name, 'resume')}
-                                    disabled={actionLoading === `${vm.name}-resume`}
-                                    className="p-1.5 rounded bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-800 transition-colors"
-                                  >
-                                    <PlayCircle className="w-3.5 h-3.5" />
-                                  </button>
-                                </Tooltip>
-                              ) : (
-                                <Tooltip content="가상머신 일시정지 (Suspend VM)">
-                                  <button
-                                    onClick={() => handleVmAction(vm.name, 'pause')}
-                                    disabled={actionLoading === `${vm.name}-pause`}
-                                    className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
-                                  >
-                                    <PauseCircle className="w-3.5 h-3.5 text-amber-300" />
-                                  </button>
-                                </Tooltip>
-                              )}
+                              {/* Pause */}
+                              <Tooltip content="가상머신 일시정지 (Suspend VM)">
+                                <button
+                                  onClick={() => handleVmAction(vm.name, 'pause')}
+                                  disabled={actionLoading === `${vm.name}-pause`}
+                                  className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+                                >
+                                  <PauseCircle className="w-3.5 h-3.5 text-amber-300" />
+                                </button>
+                              </Tooltip>
 
                               {/* Force Destroy (Power Off) */}
                               <Tooltip content="강제 전원 차단 (Force Power Off)">

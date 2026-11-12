@@ -1476,13 +1476,15 @@ class TelemetryEngine {
 
     // Scan VMs from virsh or qemu processes
     const vms = [];
+    const virshEnv = { ...process.env, LC_ALL: 'C', LANG: 'C' };
+
     try {
       let virshOut = '';
       try {
-        virshOut = execFileSync('virsh', ['-c', 'qemu:///system', 'list', '--all'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 1500 }).trim();
+        virshOut = execFileSync('virsh', ['-c', 'qemu:///system', 'list', '--all'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 3000, env: virshEnv }).trim();
       } catch (e) {
         try {
-          virshOut = execFileSync('virsh', ['list', '--all'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 1500 }).trim();
+          virshOut = execFileSync('virsh', ['list', '--all'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 3000, env: virshEnv }).trim();
         } catch (e2) {}
       }
 
@@ -1525,15 +1527,18 @@ class TelemetryEngine {
             }
 
             let diskPath = '';
-            const diskMatch = cmd.match(/(?:filename=|-drive\s+file=)([^, ]+\.(?:qcow2|raw|img|iso))/);
-            if (diskMatch) {
-              diskPath = diskMatch[1];
+            const jsonDiskMatch = cmd.match(/"filename"\s*:\s*"([^"]+\.(?:qcow2|raw|img|iso))"/);
+            const legacyDiskMatch = cmd.match(/(?:filename=|-drive\s+file=)([^, "\n]+\.(?:qcow2|raw|img|iso))/);
+            if (jsonDiskMatch) {
+              diskPath = jsonDiskMatch[1];
+            } else if (legacyDiskMatch) {
+              diskPath = legacyDiskMatch[1];
             }
 
             let display = '';
-            const spiceMatch = cmd.match(/-spice\s+port=([0-9]+)/);
+            const spiceMatch = cmd.match(/-spice\s+(?:[^,\s]*,)?port=([0-9]+)/);
             if (spiceMatch) display = `SPICE :${spiceMatch[1]}`;
-            const vncMatch = cmd.match(/-vnc\s+:([0-9]+)/);
+            const vncMatch = cmd.match(/-vnc\s+(?:[0-9.]+:)?([0-9]+)/);
             if (vncMatch) display = `VNC :${5900 + parseInt(vncMatch[1], 10)}`;
 
             qemuProcesses.push({
@@ -1558,9 +1563,12 @@ class TelemetryEngine {
             const id = parts[0] === '-' ? '-' : parts[0];
             const name = parts[1];
             const rawState = parts.slice(2).join(' ').toLowerCase();
-            const state = rawState.includes('running') ? 'running' :
-                          rawState.includes('paused') ? 'paused' :
-                          rawState.includes('in shutdown') ? 'in shutdown' : 'shut off';
+            const isRunning = rawState.includes('running') || rawState.includes('실행 중') || rawState.includes('실행중');
+            const isPaused = rawState.includes('paused') || rawState.includes('일시 중지') || rawState.includes('일시정지');
+            const isShutdown = rawState.includes('in shutdown') || rawState.includes('종료 중');
+            let state = isRunning ? 'running' :
+                        isPaused ? 'paused' :
+                        isShutdown ? 'in shutdown' : 'shut off';
 
             let vcpus = 2;
             let memoryMb = 2048;
@@ -1568,20 +1576,25 @@ class TelemetryEngine {
             try {
               let infoOut = '';
               try {
-                infoOut = execFileSync('virsh', ['-c', 'qemu:///system', 'dominfo', name], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 1500 });
+                infoOut = execFileSync('virsh', ['-c', 'qemu:///system', 'dominfo', name], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 3000, env: virshEnv });
               } catch (e1) {
                 try {
-                  infoOut = execFileSync('virsh', ['dominfo', name], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 1500 });
+                  infoOut = execFileSync('virsh', ['dominfo', name], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 3000, env: virshEnv });
                 } catch (e2) {}
               }
-              const vcpuM = infoOut.match(/CPU\(s\):\s+([0-9]+)/);
+              const vcpuM = infoOut.match(/(?:CPU\(s\)|CPU):\s+([0-9]+)/i);
               if (vcpuM) vcpus = parseInt(vcpuM[1], 10);
-              const memM = infoOut.match(/Max memory:\s+([0-9]+)\s+KiB/);
+              const memM = infoOut.match(/(?:Max memory|최대\s*메모리):\s+([0-9]+)\s+KiB/i);
               if (memM) memoryMb = Math.round(parseInt(memM[1], 10) / 1024);
-              if (infoOut.includes('Autostart:      enable')) autostart = true;
+              if (infoOut.includes('Autostart:      enable') || infoOut.includes('자동시작:      사용') || /Autostart:\s+(?:enable|yes)/i.test(infoOut)) autostart = true;
             } catch (e) {}
 
             const proc = qemuProcesses.find(p => p.guestName === name) || {};
+
+            // If virsh somehow reported shut off but active QEMU process is alive for this domain
+            if (state === 'shut off' && proc.pid) {
+              state = 'running';
+            }
 
             vms.push({
               id,
@@ -1674,13 +1687,16 @@ class TelemetryEngine {
     let virshCmd = act;
     if (act === 'pause') virshCmd = 'suspend';
 
+    const execOpts = { env: { ...process.env, LC_ALL: 'C', LANG: 'C' }, timeout: 15000 };
+
     return new Promise((resolve, reject) => {
-      execFile('virsh', ['-c', 'qemu:///system', virshCmd, vmName], (err, stdout, stderr) => {
+      execFile('virsh', ['-c', 'qemu:///system', virshCmd, vmName], execOpts, (err, stdout, stderr) => {
         if (err) {
-          execFile('virsh', [virshCmd, vmName], (err2, stdout2, stderr2) => {
+          execFile('virsh', [virshCmd, vmName], execOpts, (err2, stdout2, stderr2) => {
             if (err2) {
-              this.addLog('ERROR', `VM action failed: virsh ${virshCmd} ${vmName} -> ${stderr2 || err2.message}`, 'virtualization');
-              return reject(new Error(stderr2 || err2.message));
+              const errMsg = (stderr2 || stderr || err2.message || '').trim();
+              this.addLog('ERROR', `VM action failed: virsh ${virshCmd} ${vmName} -> ${errMsg}`, 'virtualization');
+              return reject(new Error(errMsg));
             }
             this.addLog('SUCCESS', `VM ${vmName} ${act} executed successfully.`, 'virtualization');
             resolve({ success: true, vmName, action: act, output: (stdout2 || '').trim() });
